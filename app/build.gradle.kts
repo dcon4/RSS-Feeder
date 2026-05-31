@@ -45,6 +45,17 @@ android {
     composeOptions {
         kotlinCompilerExtensionVersion = "1.5.14"
     }
+
+    packaging {
+        resources {
+            excludes += "/META-INF/{AL2.0,LGPL2.1}"
+            excludes += "/META-INF/NOTICE.md"
+            excludes += "/META-INF/LICENSE.md"
+            excludes += "/META-INF/DEPENDENCIES"
+            excludes += "/META-INF/NOTICE"
+            excludes += "/META-INF/LICENSE"
+        }
+    }
 }
 
 dependencies {
@@ -78,15 +89,11 @@ dependencies {
     // NanoHTTPD - local HTTP server
     implementation("org.nanohttpd:nanohttpd:2.3.1")
 
-    // RSS/XML parsing
-    implementation("com.rometools:rome:2.1.0")
-    implementation("com.rometools:rome-modules:2.1.0")
-
     // PDF text extraction
     implementation("com.tom-roush:pdfbox-android:2.0.27.0")
 
     // EPUB parsing
-    implementation("nl.siegmann.epublib:epublib-core:3.1") {
+    implementation("com.positiondev.epublib:epublib-core:3.1") {
         exclude(group = "org.slf4j")
         exclude(group = "xmlpull")
     }
