@@ -8,7 +8,6 @@ import android.content.Intent
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
 import com.example.rssfulltext.MainActivity
-import com.example.rssfulltext.R
 import com.example.rssfulltext.RSSFullTextApp
 import com.example.rssfulltext.data.db.AppDatabase
 import com.example.rssfulltext.logging.DebugLogger

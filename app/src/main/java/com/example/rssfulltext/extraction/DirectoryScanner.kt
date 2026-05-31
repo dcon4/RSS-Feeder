@@ -135,16 +135,19 @@ class DirectoryScanner(private val database: AppDatabase) {
 
     private fun extractFromEpub(file: File): String? {
         return try {
-            val epubInputStream = java.io.FileInputStream(file)
-            val book = nl.siegmann.epublib.epub.EpubReader().readEpub(epubInputStream)
             val sb = StringBuilder()
+            val zipInput = java.util.zip.ZipInputStream(java.io.FileInputStream(file))
+            var entry = zipInput.nextEntry
 
-            for (resource in book.contents) {
-                if (resource.mediaType?.name?.contains("html") == true ||
-                    resource.mediaType?.name?.contains("xhtml") == true
+            while (entry != null) {
+                val name = entry.name.lowercase()
+                if ((name.endsWith(".xhtml") || name.endsWith(".html") || name.endsWith(".htm"))
+                    && !name.contains("toc") && !name.contains("nav")
                 ) {
-                    val html = String(resource.data, Charsets.UTF_8)
+                    val bytes = zipInput.readBytes()
+                    val html = String(bytes, Charsets.UTF_8)
                     val doc = org.jsoup.Jsoup.parse(html)
+                    doc.select("script, style, nav, header, footer").remove()
                     val text = doc.body()?.text() ?: ""
                     if (text.isNotBlank()) {
                         sb.appendLine(text)
@@ -154,9 +157,10 @@ class DirectoryScanner(private val database: AppDatabase) {
 
                 // Stop if we've extracted enough
                 if (sb.length > MAX_CONTENT_LENGTH) break
+                entry = zipInput.nextEntry
             }
 
-            epubInputStream.close()
+            zipInput.close()
             val result = sb.toString().trim()
             if (result.isNotEmpty()) result else null
         } catch (e: Exception) {

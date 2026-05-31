@@ -10,7 +10,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.example.rssfulltext.data.model.DirectoryFeedSource
 import com.example.rssfulltext.data.model.RssFeedSource
-import com.example.rssfulltext.network.server.FeedHttpServer
 import com.example.rssfulltext.ui.viewmodel.MainUiState
 import com.example.rssfulltext.ui.viewmodel.MainViewModel
 
@@ -23,7 +22,7 @@ fun MainScreen(
     val uiState by viewModel.uiState.collectAsState()
     var showAddRssDialog by remember { mutableStateOf(false) }
     var showAddDirectoryDialog by remember { mutableStateOf(false) }
-    var selectedTab by remember { mutableIntStateOf(0) }
+    var selectedTab by remember { mutableStateOf(0) }
 
     // Show snackbar for refresh messages
     val snackbarHostState = remember { SnackbarHostState() }

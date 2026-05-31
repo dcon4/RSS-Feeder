@@ -92,12 +92,8 @@ dependencies {
     // PDF text extraction
     implementation("com.tom-roush:pdfbox-android:2.0.27.0")
 
-    // EPUB parsing
-    implementation("com.positiondev.epublib:epublib-core:3.1") {
-        exclude(group = "org.slf4j")
-        exclude(group = "xmlpull")
-    }
-    implementation("org.slf4j:slf4j-android:1.7.36")
+    // EPUB parsing - handled manually via ZipInputStream (epub is a zip of xhtml)
+    // No external dependency needed
 
     // Preferences DataStore
     implementation("androidx.datastore:datastore-preferences:1.0.0")
