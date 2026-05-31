@@ -83,7 +83,7 @@ fun SettingsScreen(
                 )
             }
 
-            HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
+            Divider(modifier = Modifier.padding(vertical = 16.dp))
 
             // Refresh Settings
             Text(
@@ -118,7 +118,7 @@ fun SettingsScreen(
                 }
             }
 
-            HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
+            Divider(modifier = Modifier.padding(vertical = 16.dp))
 
             // Debug Logging
             Text(
@@ -169,7 +169,7 @@ fun SettingsScreen(
                 Text("Clear Log")
             }
 
-            HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
+            Divider(modifier = Modifier.padding(vertical = 16.dp))
 
             // Info section
             Text(
