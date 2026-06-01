@@ -1,5 +1,8 @@
 package com.example.rssfulltext.ui.screens
 
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -8,6 +11,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
 import com.example.rssfulltext.data.model.DirectoryFeedSource
@@ -499,6 +503,20 @@ fun AddDirectoryFeedDialog(
     var slug by remember { mutableStateOf("") }
     var includeSubdirs by remember { mutableStateOf(false) }
 
+    val context = LocalContext.current
+
+    val directoryPicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocumentTree()
+    ) { uri: Uri? ->
+        uri?.let {
+            // Take persistable permissions so the app can access this URI across reboots
+            val flags = android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION or
+                    android.content.Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+            context.contentResolver.takePersistableUriPermission(it, flags)
+            path = it.toString()
+        }
+    }
+
     // Auto-generate slug from name
     LaunchedEffect(name) {
         if (slug.isEmpty() || slug == name.lowercase().replace(Regex("[^a-z0-9]+"), "-").trimEnd('-')) {
@@ -526,6 +544,13 @@ fun AddDirectoryFeedDialog(
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true
                 )
+                Spacer(modifier = Modifier.height(4.dp))
+                Button(
+                    onClick = { directoryPicker.launch(null) },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Browse...")
+                }
                 Spacer(modifier = Modifier.height(8.dp))
                 OutlinedTextField(
                     value = slug,

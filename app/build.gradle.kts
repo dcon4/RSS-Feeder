@@ -98,6 +98,9 @@ dependencies {
     // Preferences DataStore
     implementation("androidx.datastore:datastore-preferences:1.0.0")
 
+    // DocumentFile for SAF directory access
+    implementation("androidx.documentfile:documentfile:1.0.1")
+
     // Coroutines
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
 

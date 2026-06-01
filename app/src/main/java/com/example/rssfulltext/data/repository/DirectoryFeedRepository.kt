@@ -1,5 +1,6 @@
 package com.example.rssfulltext.data.repository
 
+import android.content.Context
 import com.example.rssfulltext.data.db.AppDatabase
 import com.example.rssfulltext.data.model.DirectoryFeedItem
 import com.example.rssfulltext.data.model.DirectoryFeedSource
@@ -10,14 +11,17 @@ import kotlinx.coroutines.flow.Flow
 /**
  * Repository for managing directory-based feed sources.
  */
-class DirectoryFeedRepository(private val database: AppDatabase) {
+class DirectoryFeedRepository(
+    private val database: AppDatabase,
+    private val context: Context
+) {
 
     companion object {
         private const val TAG = "DirectoryFeedRepo"
     }
 
     private val directoryFeedDao = database.directoryFeedDao()
-    private val directoryScanner = DirectoryScanner(database)
+    private val directoryScanner = DirectoryScanner(database, context)
 
     fun getAllDirectorySources(): Flow<List<DirectoryFeedSource>> =
         directoryFeedDao.getAllDirectorySources()

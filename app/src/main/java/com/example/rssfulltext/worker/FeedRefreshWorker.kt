@@ -111,7 +111,7 @@ class FeedRefreshWorker(
 
         val database = AppDatabase.getInstance(applicationContext)
         val feedRepository = FeedRepository(database)
-        val directoryRepository = DirectoryFeedRepository(database)
+        val directoryRepository = DirectoryFeedRepository(database, applicationContext)
 
         val specificId = inputData.getLong(KEY_FEED_SOURCE_ID, -1)
         val feedType = inputData.getString(KEY_FEED_TYPE)

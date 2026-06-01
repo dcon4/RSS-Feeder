@@ -34,7 +34,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private val database = AppDatabase.getInstance(application)
     private val feedRepository = FeedRepository(database)
-    private val directoryFeedRepository = DirectoryFeedRepository(database)
+    private val directoryFeedRepository = DirectoryFeedRepository(database, application)
 
     private val _uiState = MutableStateFlow(MainUiState(verboseLogging = DebugLogger.verboseEnabled))
     val uiState: StateFlow<MainUiState> = _uiState.asStateFlow()
