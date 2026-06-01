@@ -166,9 +166,11 @@ object FeedGenerator {
     /**
      * Wrap content in a CDATA section, properly escaping any occurrences of ]]> in the content.
      * The sequence ]]> is split into ]]]]><![CDATA[> to keep the XML valid.
+     * Also strips any characters that are invalid in XML 1.0.
      */
     private fun wrapCdata(content: String): String {
-        val escaped = content.replace("]]>", "]]]]><![CDATA[>")
+        val sanitized = stripInvalidXmlChars(content)
+        val escaped = sanitized.replace("]]>", "]]]]><![CDATA[>")
         return "<![CDATA[$escaped]]>"
     }
 
@@ -189,8 +191,27 @@ object FeedGenerator {
             }
     }
 
+    /**
+     * Strip characters that are invalid in XML 1.0.
+     * Valid XML 1.0 chars: #x9 | #xA | #xD | [#x20-#xD7FF] | [#xE000-#xFFFD] | [#x10000-#x10FFFF]
+     */
+    private fun stripInvalidXmlChars(text: String): String {
+        val sb = StringBuilder(text.length)
+        for (ch in text) {
+            val code = ch.code
+            if (code == 0x9 || code == 0xA || code == 0xD ||
+                (code in 0x20..0xD7FF) ||
+                (code in 0xE000..0xFFFD)
+            ) {
+                sb.append(ch)
+            }
+            // Skip invalid chars silently
+        }
+        return sb.toString()
+    }
+
     private fun escapeXml(text: String): String {
-        return text
+        return stripInvalidXmlChars(text)
             .replace("&", "&amp;")
             .replace("<", "&lt;")
             .replace(">", "&gt;")
@@ -202,7 +223,7 @@ object FeedGenerator {
      * Escape text for use in XML attribute values.
      */
     private fun escapeXmlAttr(text: String): String {
-        return text
+        return stripInvalidXmlChars(text)
             .replace("&", "&amp;")
             .replace("<", "&lt;")
             .replace(">", "&gt;")

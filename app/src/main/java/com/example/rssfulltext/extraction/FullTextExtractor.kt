@@ -109,11 +109,46 @@ class FullTextExtractor {
                 .url(url)
                 .header("User-Agent", "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36")
                 .header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
+                .header("Accept-Charset", "utf-8")
                 .build()
 
             val response = httpClient.newCall(request).execute()
             if (response.isSuccessful) {
-                response.body?.string()
+                // Read raw bytes and detect encoding from content-type or HTML meta tag
+                val bytes = response.body?.bytes() ?: return null
+                val contentType = response.header("Content-Type") ?: ""
+
+                // Try to determine charset from HTTP header
+                val headerCharset = Regex("charset=([\\w-]+)", RegexOption.IGNORE_CASE)
+                    .find(contentType)?.groupValues?.get(1)
+
+                // If header says UTF-8 or doesn't specify, use UTF-8
+                // Otherwise, try to detect from the first bytes
+                val charset = when {
+                    headerCharset != null && headerCharset.equals("utf-8", ignoreCase = true) -> Charsets.UTF_8
+                    headerCharset != null -> try {
+                        java.nio.charset.Charset.forName(headerCharset)
+                    } catch (_: Exception) {
+                        Charsets.UTF_8
+                    }
+                    else -> Charsets.UTF_8
+                }
+
+                val html = String(bytes, charset)
+
+                // Check if the HTML meta tag declares a different charset
+                val metaCharsetMatch = Regex("""<meta[^>]+charset="?([^";\s>]+)""", RegexOption.IGNORE_CASE)
+                    .find(html.take(2048))
+                if (metaCharsetMatch != null) {
+                    val metaCharset = metaCharsetMatch.groupValues[1]
+                    if (!metaCharset.equals(charset.name(), ignoreCase = true) &&
+                        metaCharset.equals("utf-8", ignoreCase = true)) {
+                        // Re-decode as UTF-8 if meta says UTF-8 but header didn't
+                        return String(bytes, Charsets.UTF_8)
+                    }
+                }
+
+                html
             } else {
                 DebugLogger.log(TAG, "HTTP ${response.code} for $url")
                 null
