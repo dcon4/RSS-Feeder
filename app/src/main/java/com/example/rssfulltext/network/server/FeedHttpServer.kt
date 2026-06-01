@@ -10,10 +10,10 @@ import kotlinx.coroutines.runBlocking
  * Lightweight HTTP server that serves full-text RSS feeds locally.
  *
  * Endpoints:
- * - GET /feed/{slug}       → RSS 2.0 XML for the given feed
- * - GET /feeds             → JSON list of available feeds
- * - GET /opml              → OPML file for importing all feeds at once
- * - GET /status            → Server status/health check
+ * - GET /feed/{slug}       -> RSS 2.0 XML for the given feed
+ * - GET /feeds             -> JSON list of available feeds
+ * - GET /opml              -> OPML file for importing all feeds at once
+ * - GET /status            -> Server status/health check
  */
 class FeedHttpServer(
     private val database: AppDatabase,
@@ -24,6 +24,9 @@ class FeedHttpServer(
     companion object {
         private const val TAG = "FeedHttpServer"
         const val DEFAULT_PORT = 8484
+        private const val MIME_RSS_XML = "application/rss+xml; charset=utf-8"
+        private const val MIME_XML = "application/xml; charset=utf-8"
+        private const val MIME_JSON = "application/json; charset=utf-8"
     }
 
     private val rssFeedDao = database.rssFeedDao()
@@ -47,7 +50,7 @@ class FeedHttpServer(
             DebugLogger.log(TAG, "Error serving $uri: ${e.message}")
             newFixedLengthResponse(
                 Response.Status.INTERNAL_ERROR,
-                "text/plain",
+                "text/plain; charset=utf-8",
                 "Internal Server Error: ${e.message}"
             )
         }
@@ -55,7 +58,9 @@ class FeedHttpServer(
 
     private fun serveStatus(): Response {
         val json = """{"status":"running","port":$listeningPort,"version":"1.0"}"""
-        return newFixedLengthResponse(Response.Status.OK, "application/json", json)
+        return newFixedLengthResponse(Response.Status.OK, MIME_JSON, json).apply {
+            addHeader("Cache-Control", "no-cache")
+        }
     }
 
     private fun serveFeedList(): Response = runBlocking {
@@ -78,7 +83,9 @@ class FeedHttpServer(
             append("]}")
         }
 
-        newFixedLengthResponse(Response.Status.OK, "application/json", feedsJson)
+        newFixedLengthResponse(Response.Status.OK, MIME_JSON, feedsJson).apply {
+            addHeader("Cache-Control", "no-cache")
+        }
     }
 
     private fun serveOpml(): Response = runBlocking {
@@ -88,8 +95,9 @@ class FeedHttpServer(
 
         val opml = FeedGenerator.generateOpml(rssFeeds, dirFeeds, baseUrl)
 
-        newFixedLengthResponse(Response.Status.OK, "text/x-opml", opml).also {
-            it.addHeader("Content-Disposition", "attachment; filename=\"feeds.opml\"")
+        newFixedLengthResponse(Response.Status.OK, MIME_XML, opml).apply {
+            addHeader("Content-Disposition", "attachment; filename=\"feeds.opml\"")
+            addHeader("Cache-Control", "no-cache")
         }
     }
 
@@ -102,7 +110,9 @@ class FeedHttpServer(
             val items = rssFeedDao.getItemsForSource(rssFeedSource.id)
             val xml = FeedGenerator.generateRssFeed(rssFeedSource, items, baseUrl)
             DebugLogger.verbose(TAG, "Serving RSS feed '${rssFeedSource.name}' with ${items.size} items")
-            return@runBlocking newFixedLengthResponse(Response.Status.OK, "application/rss+xml", xml)
+            return@runBlocking newFixedLengthResponse(Response.Status.OK, MIME_RSS_XML, xml).apply {
+                addHeader("Cache-Control", "no-cache")
+            }
         }
 
         // Try directory feed source
@@ -111,7 +121,9 @@ class FeedHttpServer(
             val items = directoryFeedDao.getItemsForDirectory(dirFeedSource.id)
             val xml = FeedGenerator.generateDirectoryFeed(dirFeedSource, items, baseUrl)
             DebugLogger.verbose(TAG, "Serving directory feed '${dirFeedSource.name}' with ${items.size} items")
-            return@runBlocking newFixedLengthResponse(Response.Status.OK, "application/rss+xml", xml)
+            return@runBlocking newFixedLengthResponse(Response.Status.OK, MIME_RSS_XML, xml).apply {
+                addHeader("Cache-Control", "no-cache")
+            }
         }
 
         DebugLogger.log(TAG, "Feed not found: $slug")
@@ -121,7 +133,7 @@ class FeedHttpServer(
     private fun serveNotFound(): Response {
         return newFixedLengthResponse(
             Response.Status.NOT_FOUND,
-            "text/plain",
+            "text/plain; charset=utf-8",
             "Feed not found. Visit /feeds for available feeds or /opml for import file."
         )
     }

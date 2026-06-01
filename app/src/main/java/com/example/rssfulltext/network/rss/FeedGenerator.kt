@@ -8,9 +8,11 @@ import com.example.rssfulltext.logging.DebugLogger
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import java.util.UUID
 
 /**
  * Generates valid RSS 2.0 XML from stored full-text feed items.
+ * Designed for maximum compatibility with strict RSS readers (gReader Pro, Pluma, etc).
  */
 object FeedGenerator {
 
@@ -27,48 +29,55 @@ object FeedGenerator {
     ): String {
         DebugLogger.verbose(TAG, "Generating RSS feed for '${source.name}' with ${items.size} items")
 
-        val selfLink = "$serverBaseUrl/feed/${source.outputSlug}"
         val lastBuildDate = rssDateFormat.format(Date(source.lastRefreshed.takeIf { it > 0 } ?: System.currentTimeMillis()))
 
         val sb = StringBuilder()
-        sb.appendLine("""<?xml version="1.0" encoding="UTF-8"?>""")
-        sb.appendLine("""<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">""")
-        sb.appendLine("  <channel>")
-        sb.appendLine("    <title>${escapeXml(source.name)} (Full Text)</title>")
-        sb.appendLine("    <link>${escapeXml(source.sourceUrl)}</link>")
-        sb.appendLine("    <description>Full-text version of ${escapeXml(source.name)}</description>")
-        sb.appendLine("    <lastBuildDate>$lastBuildDate</lastBuildDate>")
-        sb.appendLine("""    <atom:link href="${escapeXml(selfLink)}" rel="self" type="application/rss+xml"/>""")
-        sb.appendLine("    <generator>RSS Full Text Proxy</generator>")
+        sb.append("""<?xml version="1.0" encoding="UTF-8"?>""")
+        sb.append("\n")
+        sb.append("""<rss version="2.0" xmlns:content="http://purl.org/rss/1.0/modules/content/">""")
+        sb.append("\n")
+        sb.append("  <channel>\n")
+        sb.append("    <title>${escapeXml(source.name)} (Full Text)</title>\n")
+        sb.append("    <link>${escapeXml(source.sourceUrl)}</link>\n")
+        sb.append("    <description>Full-text version of ${escapeXml(source.name)}</description>\n")
+        sb.append("    <lastBuildDate>$lastBuildDate</lastBuildDate>\n")
+        sb.append("    <generator>RSS Full Text Proxy</generator>\n")
 
         for (item in items) {
-            sb.appendLine("    <item>")
-            sb.appendLine("      <title>${escapeXml(item.title)}</title>")
-            sb.appendLine("      <link>${escapeXml(item.link)}</link>")
-            sb.appendLine("      <guid isPermaLink=\"true\">${escapeXml(item.link)}</guid>")
+            sb.append("    <item>\n")
+            sb.append("      <title>${escapeXml(item.title)}</title>\n")
+            sb.append("      <link>${escapeXml(item.link)}</link>\n")
+
+            // Use a generated UUID as guid if link is empty or blank
+            val guidValue = if (item.link.isBlank()) {
+                UUID.nameUUIDFromBytes("${item.feedSourceId}:${item.title}:${item.publishDate}".toByteArray()).toString()
+            } else {
+                item.link
+            }
+            val isPermaLink = item.link.isNotBlank() && (item.link.startsWith("http://") || item.link.startsWith("https://"))
+            sb.append("      <guid isPermaLink=\"$isPermaLink\">${escapeXml(guidValue)}</guid>\n")
 
             if (item.author != null) {
-                sb.appendLine("      <author>${escapeXml(item.author)}</author>")
+                sb.append("      <author>${escapeXml(item.author)}</author>\n")
             }
 
             if (item.publishDate != null) {
-                sb.appendLine("      <pubDate>${rssDateFormat.format(Date(item.publishDate))}</pubDate>")
+                sb.append("      <pubDate>${rssDateFormat.format(Date(item.publishDate))}</pubDate>\n")
             }
 
-            // Description gets the summary/original description
-            if (item.originalDescription != null) {
-                sb.appendLine("      <description><![CDATA[${item.originalDescription}]]></description>")
-            }
+            // Put full text content in <description> - this is what most readers use
+            val fullContent = item.fullTextContent ?: item.originalDescription ?: ""
+            val htmlContent = formatContentAsHtml(fullContent)
+            sb.append("      <description>${wrapCdata(htmlContent)}</description>\n")
 
-            // content:encoded gets the full text
-            val content = item.fullTextContent ?: item.originalDescription ?: ""
-            sb.appendLine("      <content:encoded><![CDATA[${formatContentAsHtml(content)}]]></content:encoded>")
+            // Also include content:encoded for readers that support it
+            sb.append("      <content:encoded>${wrapCdata(htmlContent)}</content:encoded>\n")
 
-            sb.appendLine("    </item>")
+            sb.append("    </item>\n")
         }
 
-        sb.appendLine("  </channel>")
-        sb.appendLine("</rss>")
+        sb.append("  </channel>\n")
+        sb.append("</rss>\n")
 
         return sb.toString()
     }
@@ -83,46 +92,51 @@ object FeedGenerator {
     ): String {
         DebugLogger.verbose(TAG, "Generating directory feed for '${source.name}' with ${items.size} items")
 
-        val selfLink = "$serverBaseUrl/feed/${source.outputSlug}"
         val lastBuildDate = rssDateFormat.format(Date(source.lastScanned.takeIf { it > 0 } ?: System.currentTimeMillis()))
 
         val sb = StringBuilder()
-        sb.appendLine("""<?xml version="1.0" encoding="UTF-8"?>""")
-        sb.appendLine("""<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">""")
-        sb.appendLine("  <channel>")
-        sb.appendLine("    <title>${escapeXml(source.name)}</title>")
-        sb.appendLine("    <link>file://${escapeXml(source.directoryPath)}</link>")
-        sb.appendLine("    <description>Feed generated from local directory: ${escapeXml(source.directoryPath)}</description>")
-        sb.appendLine("    <lastBuildDate>$lastBuildDate</lastBuildDate>")
-        sb.appendLine("""    <atom:link href="${escapeXml(selfLink)}" rel="self" type="application/rss+xml"/>""")
-        sb.appendLine("    <generator>RSS Full Text Proxy - Directory Feed</generator>")
+        sb.append("""<?xml version="1.0" encoding="UTF-8"?>""")
+        sb.append("\n")
+        sb.append("""<rss version="2.0" xmlns:content="http://purl.org/rss/1.0/modules/content/">""")
+        sb.append("\n")
+        sb.append("  <channel>\n")
+        sb.append("    <title>${escapeXml(source.name)}</title>\n")
+        sb.append("    <link>file://${escapeXml(source.directoryPath)}</link>\n")
+        sb.append("    <description>Feed generated from local directory: ${escapeXml(source.directoryPath)}</description>\n")
+        sb.append("    <lastBuildDate>$lastBuildDate</lastBuildDate>\n")
+        sb.append("    <generator>RSS Full Text Proxy - Directory Feed</generator>\n")
 
         for (item in items) {
-            sb.appendLine("    <item>")
-            sb.appendLine("      <title>${escapeXml(item.title)}</title>")
-            sb.appendLine("      <link>file://${escapeXml(item.filePath)}</link>")
-            sb.appendLine("      <guid isPermaLink=\"false\">${escapeXml(item.filePath)}</guid>")
+            sb.append("    <item>\n")
+            sb.append("      <title>${escapeXml(item.title)}</title>\n")
+            sb.append("      <link>file://${escapeXml(item.filePath)}</link>\n")
+            sb.append("      <guid isPermaLink=\"false\">${escapeXml(item.filePath)}</guid>\n")
 
             if (item.lastModified > 0) {
-                sb.appendLine("      <pubDate>${rssDateFormat.format(Date(item.lastModified))}</pubDate>")
+                sb.append("      <pubDate>${rssDateFormat.format(Date(item.lastModified))}</pubDate>\n")
             }
 
-            sb.appendLine("      <description><![CDATA[File: ${item.title} (${item.fileType.uppercase()}, ${formatFileSize(item.fileSize)})]]></description>")
-
+            // Put content in description for reader compatibility
             val content = item.textContent ?: "(Content extraction failed for this file)"
-            sb.appendLine("      <content:encoded><![CDATA[${formatContentAsHtml(content)}]]></content:encoded>")
+            val htmlContent = formatContentAsHtml(content)
+            val summaryHtml = "File: ${escapeXml(item.title)} (${item.fileType.uppercase()}, ${formatFileSize(item.fileSize)})"
+            sb.append("      <description>${wrapCdata(htmlContent)}</description>\n")
 
-            sb.appendLine("    </item>")
+            // Also include content:encoded
+            sb.append("      <content:encoded>${wrapCdata(htmlContent)}</content:encoded>\n")
+
+            sb.append("    </item>\n")
         }
 
-        sb.appendLine("  </channel>")
-        sb.appendLine("</rss>")
+        sb.append("  </channel>\n")
+        sb.append("</rss>\n")
 
         return sb.toString()
     }
 
     /**
-     * Generate an OPML file listing all available feeds for easy import.
+     * Generate an OPML 1.0 file listing all available feeds for easy import.
+     * Uses OPML 1.0 for maximum reader compatibility.
      */
     fun generateOpml(
         rssFeeds: List<RssFeedSource>,
@@ -130,36 +144,39 @@ object FeedGenerator {
         serverBaseUrl: String
     ): String {
         val sb = StringBuilder()
-        sb.appendLine("""<?xml version="1.0" encoding="UTF-8"?>""")
-        sb.appendLine("""<opml version="2.0">""")
-        sb.appendLine("  <head>")
-        sb.appendLine("    <title>RSS Full Text Proxy Feeds</title>")
-        sb.appendLine("    <dateCreated>${rssDateFormat.format(Date())}</dateCreated>")
-        sb.appendLine("  </head>")
-        sb.appendLine("  <body>")
+        sb.append("""<?xml version="1.0" encoding="UTF-8"?>""")
+        sb.append("\n")
+        sb.append("""<opml version="1.0">""")
+        sb.append("\n")
+        sb.append("  <head>\n")
+        sb.append("    <title>RSS Full Text Proxy Feeds</title>\n")
+        sb.append("  </head>\n")
+        sb.append("  <body>\n")
 
-        if (rssFeeds.isNotEmpty()) {
-            sb.appendLine("""    <outline text="Full Text Feeds" title="Full Text Feeds">""")
-            for (feed in rssFeeds) {
-                val xmlUrl = "$serverBaseUrl/feed/${feed.outputSlug}"
-                sb.appendLine("""      <outline type="rss" text="${escapeXml(feed.name)}" title="${escapeXml(feed.name)}" xmlUrl="${escapeXml(xmlUrl)}" htmlUrl="${escapeXml(feed.sourceUrl)}"/>""")
-            }
-            sb.appendLine("    </outline>")
+        for (feed in rssFeeds) {
+            val xmlUrl = "$serverBaseUrl/feed/${feed.outputSlug}"
+            sb.append("""    <outline type="rss" text="${escapeXmlAttr(feed.name)}" title="${escapeXmlAttr(feed.name)}" xmlUrl="${escapeXmlAttr(xmlUrl)}" htmlUrl="${escapeXmlAttr(feed.sourceUrl)}"/>""")
+            sb.append("\n")
+        }
+        for (feed in directoryFeeds) {
+            val xmlUrl = "$serverBaseUrl/feed/${feed.outputSlug}"
+            sb.append("""    <outline type="rss" text="${escapeXmlAttr(feed.name)}" title="${escapeXmlAttr(feed.name)}" xmlUrl="${escapeXmlAttr(xmlUrl)}"/>""")
+            sb.append("\n")
         }
 
-        if (directoryFeeds.isNotEmpty()) {
-            sb.appendLine("""    <outline text="Directory Feeds" title="Directory Feeds">""")
-            for (feed in directoryFeeds) {
-                val xmlUrl = "$serverBaseUrl/feed/${feed.outputSlug}"
-                sb.appendLine("""      <outline type="rss" text="${escapeXml(feed.name)}" title="${escapeXml(feed.name)}" xmlUrl="${escapeXml(xmlUrl)}"/>""")
-            }
-            sb.appendLine("    </outline>")
-        }
-
-        sb.appendLine("  </body>")
-        sb.appendLine("</opml>")
+        sb.append("  </body>\n")
+        sb.append("</opml>\n")
 
         return sb.toString()
+    }
+
+    /**
+     * Wrap content in a CDATA section, properly escaping any occurrences of ]]> in the content.
+     * The sequence ]]> is split into ]]]]><![CDATA[> to keep the XML valid.
+     */
+    private fun wrapCdata(content: String): String {
+        val escaped = content.replace("]]>", "]]]]><![CDATA[>")
+        return "<![CDATA[$escaped]]>"
     }
 
     private fun formatContentAsHtml(text: String): String {
@@ -180,6 +197,18 @@ object FeedGenerator {
     }
 
     private fun escapeXml(text: String): String {
+        return text
+            .replace("&", "&amp;")
+            .replace("<", "&lt;")
+            .replace(">", "&gt;")
+            .replace("\"", "&quot;")
+            .replace("'", "&apos;")
+    }
+
+    /**
+     * Escape text for use in XML attribute values.
+     */
+    private fun escapeXmlAttr(text: String): String {
         return text
             .replace("&", "&amp;")
             .replace("<", "&lt;")
