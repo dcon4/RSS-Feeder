@@ -7,11 +7,14 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
 import com.example.rssfulltext.data.model.DirectoryFeedSource
 import com.example.rssfulltext.data.model.RssFeedSource
 import com.example.rssfulltext.ui.viewmodel.MainUiState
 import com.example.rssfulltext.ui.viewmodel.MainViewModel
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -26,6 +29,16 @@ fun MainScreen(
 
     // Show snackbar for refresh messages
     val snackbarHostState = remember { SnackbarHostState() }
+    val clipboardManager = LocalClipboardManager.current
+    val coroutineScope = rememberCoroutineScope()
+
+    val copyToClipboard: (String) -> Unit = { url ->
+        clipboardManager.setText(AnnotatedString(url))
+        coroutineScope.launch {
+            snackbarHostState.showSnackbar("Feed URL copied")
+        }
+    }
+
     LaunchedEffect(uiState.refreshMessage) {
         uiState.refreshMessage?.let { msg ->
             snackbarHostState.showSnackbar(msg)
@@ -66,7 +79,8 @@ fun MainScreen(
             ServerStatusBar(
                 uiState = uiState,
                 onStartServer = { viewModel.startServer() },
-                onStopServer = { viewModel.stopServer() }
+                onStopServer = { viewModel.stopServer() },
+                onCopyUrl = copyToClipboard
             )
 
             // Tabs
@@ -94,13 +108,15 @@ fun MainScreen(
                     feeds = uiState.rssFeeds,
                     serverPort = uiState.serverPort,
                     onRefresh = { viewModel.refreshRssFeed(it) },
-                    onDelete = { viewModel.deleteRssFeed(it) }
+                    onDelete = { viewModel.deleteRssFeed(it) },
+                    onCopyUrl = copyToClipboard
                 )
                 1 -> DirectoryFeedList(
                     feeds = uiState.directoryFeeds,
                     serverPort = uiState.serverPort,
                     onScan = { viewModel.scanDirectory(it) },
-                    onDelete = { viewModel.deleteDirectoryFeed(it) }
+                    onDelete = { viewModel.deleteDirectoryFeed(it) },
+                    onCopyUrl = copyToClipboard
                 )
             }
         }
@@ -132,7 +148,8 @@ fun MainScreen(
 fun ServerStatusBar(
     uiState: MainUiState,
     onStartServer: () -> Unit,
-    onStopServer: () -> Unit
+    onStopServer: () -> Unit,
+    onCopyUrl: (String) -> Unit
 ) {
     Card(
         modifier = Modifier
@@ -152,7 +169,7 @@ fun ServerStatusBar(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Column {
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = if (uiState.serverRunning) "Server Running" else "Server Stopped",
                     style = MaterialTheme.typography.titleSmall
@@ -162,6 +179,22 @@ fun ServerStatusBar(
                         text = "http://127.0.0.1:${uiState.serverPort}/feeds",
                         style = MaterialTheme.typography.bodySmall
                     )
+                }
+            }
+            if (uiState.serverRunning) {
+                Column {
+                    Row {
+                        TextButton(onClick = {
+                            onCopyUrl("http://127.0.0.1:${uiState.serverPort}/feeds")
+                        }) {
+                            Text("Copy /feeds")
+                        }
+                        TextButton(onClick = {
+                            onCopyUrl("http://127.0.0.1:${uiState.serverPort}/opml")
+                        }) {
+                            Text("Copy /opml")
+                        }
+                    }
                 }
             }
             Button(
@@ -178,7 +211,8 @@ fun RssFeedList(
     feeds: List<RssFeedSource>,
     serverPort: Int,
     onRefresh: (RssFeedSource) -> Unit,
-    onDelete: (RssFeedSource) -> Unit
+    onDelete: (RssFeedSource) -> Unit,
+    onCopyUrl: (String) -> Unit
 ) {
     if (feeds.isEmpty()) {
         Box(
@@ -196,7 +230,7 @@ fun RssFeedList(
             contentPadding = PaddingValues(8.dp)
         ) {
             items(feeds) { feed ->
-                RssFeedCard(feed, serverPort, onRefresh, onDelete)
+                RssFeedCard(feed, serverPort, onRefresh, onDelete, onCopyUrl)
             }
         }
     }
@@ -207,7 +241,8 @@ fun RssFeedCard(
     feed: RssFeedSource,
     serverPort: Int,
     onRefresh: (RssFeedSource) -> Unit,
-    onDelete: (RssFeedSource) -> Unit
+    onDelete: (RssFeedSource) -> Unit,
+    onCopyUrl: (String) -> Unit
 ) {
     var showDeleteConfirm by remember { mutableStateOf(false) }
 
@@ -244,6 +279,11 @@ fun RssFeedCard(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.End
             ) {
+                TextButton(onClick = {
+                    onCopyUrl("http://127.0.0.1:$serverPort/feed/${feed.outputSlug}")
+                }) {
+                    Text("Copy URL")
+                }
                 TextButton(onClick = { onRefresh(feed) }) {
                     Text("Refresh")
                 }
@@ -277,7 +317,8 @@ fun DirectoryFeedList(
     feeds: List<DirectoryFeedSource>,
     serverPort: Int,
     onScan: (DirectoryFeedSource) -> Unit,
-    onDelete: (DirectoryFeedSource) -> Unit
+    onDelete: (DirectoryFeedSource) -> Unit,
+    onCopyUrl: (String) -> Unit
 ) {
     if (feeds.isEmpty()) {
         Box(
@@ -295,7 +336,7 @@ fun DirectoryFeedList(
             contentPadding = PaddingValues(8.dp)
         ) {
             items(feeds) { feed ->
-                DirectoryFeedCard(feed, serverPort, onScan, onDelete)
+                DirectoryFeedCard(feed, serverPort, onScan, onDelete, onCopyUrl)
             }
         }
     }
@@ -306,7 +347,8 @@ fun DirectoryFeedCard(
     feed: DirectoryFeedSource,
     serverPort: Int,
     onScan: (DirectoryFeedSource) -> Unit,
-    onDelete: (DirectoryFeedSource) -> Unit
+    onDelete: (DirectoryFeedSource) -> Unit,
+    onCopyUrl: (String) -> Unit
 ) {
     var showDeleteConfirm by remember { mutableStateOf(false) }
 
@@ -343,6 +385,11 @@ fun DirectoryFeedCard(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.End
             ) {
+                TextButton(onClick = {
+                    onCopyUrl("http://127.0.0.1:$serverPort/feed/${feed.outputSlug}")
+                }) {
+                    Text("Copy URL")
+                }
                 TextButton(onClick = { onScan(feed) }) {
                     Text("Scan")
                 }
