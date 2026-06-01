@@ -34,7 +34,7 @@ object FeedGenerator {
         val sb = StringBuilder()
         sb.append("""<?xml version="1.0" encoding="UTF-8"?>""")
         sb.append("\n")
-        sb.append("""<rss version="2.0" xmlns:content="http://purl.org/rss/1.0/modules/content/">""")
+        sb.append("""<rss version="2.0">""")
         sb.append("\n")
         sb.append("  <channel>\n")
         sb.append("    <title>${escapeXml(source.name)} (Full Text)</title>\n")
@@ -65,13 +65,10 @@ object FeedGenerator {
                 sb.append("      <pubDate>${rssDateFormat.format(Date(item.publishDate))}</pubDate>\n")
             }
 
-            // Put full text content in <description> - this is what most readers use
+            // Put full text content in <description> only - maximum compatibility
             val fullContent = item.fullTextContent ?: item.originalDescription ?: ""
             val htmlContent = formatContentAsHtml(fullContent)
             sb.append("      <description>${wrapCdata(htmlContent)}</description>\n")
-
-            // Also include content:encoded for readers that support it
-            sb.append("      <content:encoded>${wrapCdata(htmlContent)}</content:encoded>\n")
 
             sb.append("    </item>\n")
         }
@@ -97,7 +94,7 @@ object FeedGenerator {
         val sb = StringBuilder()
         sb.append("""<?xml version="1.0" encoding="UTF-8"?>""")
         sb.append("\n")
-        sb.append("""<rss version="2.0" xmlns:content="http://purl.org/rss/1.0/modules/content/">""")
+        sb.append("""<rss version="2.0">""")
         sb.append("\n")
         sb.append("  <channel>\n")
         sb.append("    <title>${escapeXml(source.name)}</title>\n")
@@ -116,14 +113,10 @@ object FeedGenerator {
                 sb.append("      <pubDate>${rssDateFormat.format(Date(item.lastModified))}</pubDate>\n")
             }
 
-            // Put content in description for reader compatibility
+            // Put content in description only for maximum reader compatibility
             val content = item.textContent ?: "(Content extraction failed for this file)"
             val htmlContent = formatContentAsHtml(content)
-            val summaryHtml = "File: ${escapeXml(item.title)} (${item.fileType.uppercase()}, ${formatFileSize(item.fileSize)})"
             sb.append("      <description>${wrapCdata(htmlContent)}</description>\n")
-
-            // Also include content:encoded
-            sb.append("      <content:encoded>${wrapCdata(htmlContent)}</content:encoded>\n")
 
             sb.append("    </item>\n")
         }

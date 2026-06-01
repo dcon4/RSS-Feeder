@@ -5,6 +5,7 @@ import com.example.rssfulltext.logging.DebugLogger
 import com.example.rssfulltext.network.rss.FeedGenerator
 import fi.iki.elonen.NanoHTTPD
 import kotlinx.coroutines.runBlocking
+import java.io.ByteArrayInputStream
 
 /**
  * Lightweight HTTP server that serves full-text RSS feeds locally.
@@ -24,9 +25,9 @@ class FeedHttpServer(
     companion object {
         private const val TAG = "FeedHttpServer"
         const val DEFAULT_PORT = 8484
-        private const val MIME_RSS_XML = "application/rss+xml; charset=utf-8"
-        private const val MIME_XML = "application/xml; charset=utf-8"
-        private const val MIME_JSON = "application/json; charset=utf-8"
+        private const val MIME_RSS_XML = "application/rss+xml"
+        private const val MIME_XML = "text/xml"
+        private const val MIME_JSON = "application/json"
     }
 
     private val rssFeedDao = database.rssFeedDao()
@@ -95,8 +96,7 @@ class FeedHttpServer(
 
         val opml = FeedGenerator.generateOpml(rssFeeds, dirFeeds, baseUrl)
 
-        newFixedLengthResponse(Response.Status.OK, MIME_XML, opml).apply {
-            addHeader("Content-Disposition", "attachment; filename=\"feeds.opml\"")
+        newUtf8Response(Response.Status.OK, MIME_XML, opml).apply {
             addHeader("Cache-Control", "no-cache")
         }
     }
@@ -110,7 +110,7 @@ class FeedHttpServer(
             val items = rssFeedDao.getItemsForSource(rssFeedSource.id)
             val xml = FeedGenerator.generateRssFeed(rssFeedSource, items, baseUrl)
             DebugLogger.verbose(TAG, "Serving RSS feed '${rssFeedSource.name}' with ${items.size} items")
-            return@runBlocking newFixedLengthResponse(Response.Status.OK, MIME_RSS_XML, xml).apply {
+            return@runBlocking newUtf8Response(Response.Status.OK, MIME_XML, xml).apply {
                 addHeader("Cache-Control", "no-cache")
             }
         }
@@ -121,7 +121,7 @@ class FeedHttpServer(
             val items = directoryFeedDao.getItemsForDirectory(dirFeedSource.id)
             val xml = FeedGenerator.generateDirectoryFeed(dirFeedSource, items, baseUrl)
             DebugLogger.verbose(TAG, "Serving directory feed '${dirFeedSource.name}' with ${items.size} items")
-            return@runBlocking newFixedLengthResponse(Response.Status.OK, MIME_RSS_XML, xml).apply {
+            return@runBlocking newUtf8Response(Response.Status.OK, MIME_XML, xml).apply {
                 addHeader("Cache-Control", "no-cache")
             }
         }
@@ -164,5 +164,17 @@ class FeedHttpServer(
     fun stopServer() {
         stop()
         DebugLogger.log(TAG, "HTTP server stopped")
+    }
+
+    /**
+     * Create a response with explicit UTF-8 byte encoding.
+     * This ensures Content-Length matches actual byte count (important for multi-byte chars like emojis).
+     */
+    private fun newUtf8Response(status: Response.Status, mimeType: String, content: String): Response {
+        val bytes = content.toByteArray(Charsets.UTF_8)
+        val inputStream = ByteArrayInputStream(bytes)
+        val response = newFixedLengthResponse(status, mimeType, inputStream, bytes.size.toLong())
+        response.addHeader("Content-Type", "$mimeType; charset=utf-8")
+        return response
     }
 }
