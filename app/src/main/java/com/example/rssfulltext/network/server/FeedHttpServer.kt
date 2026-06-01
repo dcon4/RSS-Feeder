@@ -40,6 +40,7 @@ class FeedHttpServer(
                 uri == "/status" -> serveStatus()
                 uri == "/feeds" -> serveFeedList()
                 uri == "/opml" -> serveOpml()
+                uri.startsWith("/raw/") -> serveRawFeed(uri.removePrefix("/raw/"))
                 uri.startsWith("/feed/") -> serveFeed(uri.removePrefix("/feed/"))
                 else -> serveNotFound()
             }
@@ -134,6 +135,30 @@ class FeedHttpServer(
         )
     }
 
+    /**
+     * Serve the raw XML as plain text for debugging.
+     * Access via http://127.0.0.1:8484/raw/slug-name in a browser to inspect the actual output.
+     */
+    private fun serveRawFeed(slug: String): Response = runBlocking {
+        val baseUrl = getBaseUrl()
+
+        val rssFeedSource = rssFeedDao.getFeedSourceBySlug(slug)
+        if (rssFeedSource != null) {
+            val items = rssFeedDao.getItemsForSource(rssFeedSource.id)
+            val xml = FeedGenerator.generateRssFeed(rssFeedSource, items, baseUrl)
+            return@runBlocking newFixedLengthResponse(Response.Status.OK, "text/plain; charset=utf-8", xml)
+        }
+
+        val dirFeedSource = directoryFeedDao.getDirectorySourceBySlug(slug)
+        if (dirFeedSource != null) {
+            val items = directoryFeedDao.getItemsForDirectory(dirFeedSource.id)
+            val xml = FeedGenerator.generateDirectoryFeed(dirFeedSource, items, baseUrl)
+            return@runBlocking newFixedLengthResponse(Response.Status.OK, "text/plain; charset=utf-8", xml)
+        }
+
+        serveNotFound()
+    }
+
     private fun getBaseUrl(): String {
         return "http://127.0.0.1:$listeningPort"
     }
@@ -163,11 +188,21 @@ class FeedHttpServer(
     }
 
     /**
-     * Create an XML response using NanoHTTPD's string-based response.
-     * NanoHTTPD handles UTF-8 encoding internally for string responses,
-     * avoiding duplicate Content-Type headers that confuse strict RSS parsers.
+     * Create an XML response with explicit UTF-8 byte handling.
+     *
+     * Uses ByteArrayInputStream to ensure:
+     * 1. Content-Length header matches actual byte count exactly
+     * 2. charset=utf-8 is declared in Content-Type
+     * 3. No chunked transfer encoding (which some readers can't handle)
      */
     private fun createXmlResponse(content: String): Response {
-        return newFixedLengthResponse(Response.Status.OK, "text/xml", content)
+        val bytes = content.toByteArray(Charsets.UTF_8)
+        DebugLogger.verbose(TAG, "Response: ${bytes.size} bytes, starts with: ${content.take(100)}")
+        return newFixedLengthResponse(
+            Response.Status.OK,
+            "text/xml; charset=utf-8",
+            java.io.ByteArrayInputStream(bytes),
+            bytes.size.toLong()
+        )
     }
 }
