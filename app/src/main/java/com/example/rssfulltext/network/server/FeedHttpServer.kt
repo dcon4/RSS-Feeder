@@ -188,21 +188,16 @@ class FeedHttpServer(
     }
 
     /**
-     * Create an XML response with explicit UTF-8 byte handling.
+     * Create an XML response with explicit connection close.
      *
-     * Uses ByteArrayInputStream to ensure:
-     * 1. Content-Length header matches actual byte count exactly
-     * 2. charset=utf-8 is declared in Content-Type
-     * 3. No chunked transfer encoding (which some readers can't handle)
+     * Uses NanoHTTPD's string overload (handles UTF-8 internally)
+     * and forces Connection: close to prevent keep-alive issues with
+     * Android RSS reader HTTP clients on localhost.
      */
     private fun createXmlResponse(content: String): Response {
-        val bytes = content.toByteArray(Charsets.UTF_8)
-        DebugLogger.verbose(TAG, "Response: ${bytes.size} bytes, starts with: ${content.take(100)}")
-        return newFixedLengthResponse(
-            Response.Status.OK,
-            "text/xml; charset=utf-8",
-            java.io.ByteArrayInputStream(bytes),
-            bytes.size.toLong()
-        )
+        DebugLogger.verbose(TAG, "Response: ${content.toByteArray(Charsets.UTF_8).size} bytes")
+        return newFixedLengthResponse(Response.Status.OK, "text/xml; charset=utf-8", content).apply {
+            addHeader("Connection", "close")
+        }
     }
 }
