@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">RSS Feeder</string>
+    <string name="share_log">Share log</string>
+    <string name="add_feed">Add feed</string>
+    <string name="settings">Settings</string>
+    <string name="verbose_logging">Verbose logging</string>
+    <string name="verbose_logging_desc">Log detailed information for troubleshooting</string>
+    <string name="local_feed">Local feed</string>
+    <string name="add_feed_url">Add feed by URL</string>
+    <string name="add_local_folder">Add local folder as feed</string>
+    <string name="feed_url_hint">Paste RSS feed URL here</string>
+    <string name="save">Save</string>
+    <string name="cancel">Cancel</string>
+    <string name="no_articles">No articles yet</string>
+    <string name="refresh">Refresh</string>
+    <string name="refresh_failed">Refresh failed</string>
+    <string name="loading">Loading…</string>
+    <string name="article_from">From %1$s</string>
+    <string name="select_folder">Select a folder</string>
+    <string name="folder_note">The app will read all .txt, .html, and .pdf files in this folder and show them as feed entries.</string>
+    <string name="delete_feed">Delete feed</string>
+    <string name="mark_read">Mark all read</string>
+    <string name="unread_count">%1$d unread</string>
+    <string name="open_article">Open article</string>
+</resources>
