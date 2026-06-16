@@ -41,6 +41,10 @@ class ArticleRepository(
         articleDao.markAsRead(id)
     }
 
+    suspend fun deleteArticlesForFeed(feedId: Long) {
+        articleDao.deleteArticlesForFeed(feedId)
+    }
+
     private fun ArticleEntity.toDomain(): Article {
         return Article(
             id = id,
