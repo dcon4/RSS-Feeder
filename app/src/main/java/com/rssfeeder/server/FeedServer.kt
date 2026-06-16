@@ -24,17 +24,17 @@ class FeedServer(
     }
 
     override fun serve(session: IHTTPSession): Response {
-        val uri = session.uri.trimEnd('/')
+        val rawPath = session.uri.split("?").first().trimEnd('/')
 
         return try {
             when {
-                uri == "/" || uri == "/index.html" -> handleIndex()
-                uri == "/health" -> newFixedLengthResponse(
+                rawPath == "/" || rawPath == "/index.html" -> handleIndex()
+                rawPath == "/health" -> newFixedLengthResponse(
                     Response.Status.OK, "text/plain", "OK"
                 )
-                uri.matches(Regex("/feed/\\d+/rss\\.xml")) -> handleFeedRss(uri)
+                rawPath.matches(Regex("/feed/\\d+/rss\\.xml")) -> handleFeedRss(rawPath)
                 else -> newFixedLengthResponse(
-                    Response.Status.NOT_FOUND, "text/plain", "Not found"
+                    Response.Status.NOT_FOUND, "text/xml", "Not found"
                 )
             }
         } catch (e: Exception) {
@@ -53,13 +53,13 @@ class FeedServer(
 
     private fun handleFeedRss(uri: String): Response {
         val feedId = uri.removePrefix("/feed/").removeSuffix("/rss.xml").toLongOrNull()
-            ?: return newFixedLengthResponse(Response.Status.BAD_REQUEST, "text/plain", "Invalid feed ID")
+            ?: return newFixedLengthResponse(Response.Status.BAD_REQUEST, "text/xml", "Invalid feed ID")
 
         val feed = runBlocking { feedRepository.getFeedById(feedId) }
-            ?: return newFixedLengthResponse(Response.Status.NOT_FOUND, "text/plain", "Feed not found")
+            ?: return newFixedLengthResponse(Response.Status.NOT_FOUND, "text/xml", "Feed not found")
 
         val articles = runBlocking { articleRepository.getArticlesForFeedList(feedId) }
         val xml = RssXmlBuilder.buildFeedXml(feed, articles, baseUrl)
-        return newFixedLengthResponse(Response.Status.OK, "application/rss+xml; charset=utf-8", xml)
+        return newFixedLengthResponse(Response.Status.OK, "text/xml; charset=utf-8", xml)
     }
 }

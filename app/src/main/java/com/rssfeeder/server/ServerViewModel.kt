@@ -20,7 +20,8 @@ data class ServerUiState(
 
 data class FeedWithUrl(
     val feed: Feed,
-    val rssUrl: String
+    val localUrl: String,
+    val networkUrl: String
 )
 
 class ServerViewModel(application: Application) : AndroidViewModel(application) {
@@ -37,20 +38,24 @@ class ServerViewModel(application: Application) : AndroidViewModel(application) 
         viewModelScope.launch {
             ServerService.serverState.collect { serviceState ->
                 val feeds = feedRepository.getFeedList()
-                val baseUrl = if (serviceState.isRunning) {
-                    "http://${serviceState.ipAddress}:${serviceState.port}"
+                val port = serviceState.port
+                val networkBase = if (serviceState.isRunning) {
+                    "http://${serviceState.ipAddress}:$port"
+                } else ""
+                val localBase = if (serviceState.isRunning) {
+                    "http://127.0.0.1:$port"
                 } else ""
 
                 _uiState.value = ServerUiState(
                     isRunning = serviceState.isRunning,
                     ipAddress = serviceState.ipAddress,
-                    port = serviceState.port,
+                    port = port,
                     feeds = feeds.map { feed ->
+                        val suffix = "/feed/${feed.id}/rss.xml"
                         FeedWithUrl(
                             feed = feed,
-                            rssUrl = if (serviceState.isRunning) {
-                                "$baseUrl/feed/${feed.id}/rss.xml"
-                            } else ""
+                            localUrl = "$localBase$suffix",
+                            networkUrl = "$networkBase$suffix"
                         )
                     }
                 )
@@ -70,12 +75,16 @@ class ServerViewModel(application: Application) : AndroidViewModel(application) 
         viewModelScope.launch {
             val feeds = feedRepository.getFeedList()
             val state = _uiState.value
-            val baseUrl = if (state.isRunning) "http://${state.ipAddress}:${state.port}" else ""
+            val port = state.port
+            val networkBase = if (state.isRunning) "http://${state.ipAddress}:$port" else ""
+            val localBase = if (state.isRunning) "http://127.0.0.1:$port" else ""
             _uiState.value = state.copy(
                 feeds = feeds.map { feed ->
+                    val suffix = "/feed/${feed.id}/rss.xml"
                     FeedWithUrl(
                         feed = feed,
-                        rssUrl = if (state.isRunning) "$baseUrl/feed/${feed.id}/rss.xml" else ""
+                        localUrl = "$localBase$suffix",
+                        networkUrl = "$networkBase$suffix"
                     )
                 }
             )

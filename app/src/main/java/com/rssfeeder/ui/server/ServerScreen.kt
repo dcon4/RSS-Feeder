@@ -16,6 +16,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -23,7 +24,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -102,8 +102,11 @@ fun ServerScreen(
             ) { feedWithUrl ->
                 FeedRssCard(
                     feedWithUrl = feedWithUrl,
-                    onClick = {
-                        copyToClipboard(context, feedWithUrl.rssUrl)
+                    onCopyLocal = {
+                        copyToClipboard(context, feedWithUrl.localUrl)
+                    },
+                    onCopyNetwork = {
+                        copyToClipboard(context, feedWithUrl.networkUrl)
                     }
                 )
             }
@@ -132,7 +135,7 @@ private fun ServerStatusCard(
             Spacer(modifier = Modifier.height(8.dp))
 
             val statusText = if (isRunning) {
-                "Running on http://$ipAddress:$port"
+                "Running on port $port"
             } else {
                 "Not running"
             }
@@ -144,8 +147,19 @@ private fun ServerStatusCard(
             )
 
             if (isRunning) {
+                Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = "Add this URL to your RSS reader",
+                    text = "Local: http://127.0.0.1:$port",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    text = "Network: http://$ipAddress:$port",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    text = "Add these URLs to your RSS reader",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(top = 4.dp)
@@ -167,7 +181,8 @@ private fun ServerStatusCard(
 @Composable
 private fun FeedRssCard(
     feedWithUrl: FeedWithUrl,
-    onClick: () -> Unit,
+    onCopyLocal: () -> Unit,
+    onCopyNetwork: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Card(
@@ -184,23 +199,64 @@ private fun FeedRssCard(
             Spacer(modifier = Modifier.height(4.dp))
             Text(
                 text = feedWithUrl.feed.url.let { url ->
-                    if (url.length > 50) url.take(50) + "..." else url
+                    if (url.length > 60) url.take(60) + "..." else url
                 },
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1
             )
             Spacer(modifier = Modifier.height(8.dp))
-            OutlinedButton(
-                onClick = onClick,
-                modifier = Modifier.fillMaxWidth()
+
+            UrlCopyRow(
+                label = "Same device",
+                url = feedWithUrl.localUrl,
+                onCopy = onCopyLocal
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            UrlCopyRow(
+                label = "Other devices",
+                url = feedWithUrl.networkUrl,
+                onCopy = onCopyNetwork
+            )
+        }
+    }
+}
+
+@Composable
+private fun UrlCopyRow(
+    label: String,
+    url: String,
+    onCopy: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        )
+    ) {
+        Column(modifier = Modifier.padding(8.dp)) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(modifier = Modifier.height(2.dp))
+            IconButton(
+                onClick = onCopy,
+                modifier = Modifier.align(Alignment.End)
             ) {
-                Text(
-                    text = feedWithUrl.rssUrl.ifEmpty { "Start server to get URL" },
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                Icon(
+                    imageVector = Icons.Default.ContentCopy,
+                    contentDescription = "Copy $label URL"
                 )
             }
+            Text(
+                text = url,
+                style = MaterialTheme.typography.bodySmall,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
         }
     }
 }
