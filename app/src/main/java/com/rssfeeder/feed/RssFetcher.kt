@@ -1,9 +1,8 @@
 package com.rssfeeder.feed
 
+import android.util.Xml
 import com.rssfeeder.data.model.Article
 import com.rssfeeder.debug.DebugLogger
-import org.xmlpull.v1.XmlPullParser
-import org.xmlpull.v1.XmlPullParserFactory
 import java.net.URL
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -22,8 +21,7 @@ class RssFetcher {
                 conn.getInputStream()
             }
 
-            val factory = XmlPullParserFactory.newInstance()
-            val parser = factory.newPullParser()
+            val parser = Xml.newPullParser()
             parser.setInput(inputStream.bufferedReader())
 
             val articles = mutableListOf<Article>()
