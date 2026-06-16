@@ -71,6 +71,7 @@ dependencies {
     implementation("androidx.datastore:datastore-preferences:1.1.1")
     implementation("androidx.work:work-runtime-ktx:2.9.1")
 
+    implementation("com.google.android.material:material:1.12.0")
     implementation("org.jsoup:jsoup:1.17.2")
     implementation("com.tom-roush:pdfbox-android:2.0.27.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
