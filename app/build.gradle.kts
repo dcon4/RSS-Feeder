@@ -82,11 +82,11 @@ dependencies {
     implementation("org.jsoup:jsoup:1.18.1")
 
     // PDF text extraction
-    implementation("com.tom-roush:pdfbox-android:2.0.27.0")
+    implementation("com.tom_roush:pdfbox-android:2.0.27.0")
 
     // Coroutines
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
 
-    debuggingTools("androidx.compose.ui:ui-tooling")
-    debuggingTools("androidx.compose.ui:ui-test-manifest")
+    debugImplementation("androidx.compose.ui:ui-tooling")
+    debugImplementation("androidx.compose.ui:ui-test-manifest")
 }
