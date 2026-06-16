@@ -17,6 +17,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -43,7 +44,7 @@ import com.rssfeeder.ui.components.RssFeederTopBar
 fun ServerScreen(
     viewModel: ServerViewModel,
     onAddFeedClick: () -> Unit,
-    onBackClick: () -> Unit,
+    onSettingsClick: () -> Unit,
     onShareLog: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -61,6 +62,12 @@ fun ServerScreen(
                         Icon(
                             imageVector = Icons.Default.Add,
                             contentDescription = "Add feed"
+                        )
+                    }
+                    IconButton(onClick = onSettingsClick) {
+                        Icon(
+                            imageVector = Icons.Default.Settings,
+                            contentDescription = "Settings"
                         )
                     }
                 }

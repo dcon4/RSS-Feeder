@@ -94,7 +94,9 @@ class MainActivity : ComponentActivity() {
                     onAddFeedClick = {
                         navController.navigate("add_feed")
                     },
-                    onBackClick = {},
+                    onSettingsClick = {
+                        navController.navigate("settings")
+                    },
                     onShareLog = shareLog
                 )
             }
