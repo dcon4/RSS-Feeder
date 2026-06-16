@@ -5,9 +5,10 @@ import com.rssfeeder.data.model.Article
 import com.rssfeeder.debug.DebugLogger
 import java.net.URL
 import java.text.SimpleDateFormat
-import java.util.Date
 import java.util.Locale
+import org.xmlpull.v1.XmlPullParser
 
+@Suppress("DEPRECATION")
 class RssFetcher {
 
     fun fetchFeed(feedUrl: String): List<Article> {
