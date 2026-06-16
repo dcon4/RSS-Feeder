@@ -21,6 +21,7 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -88,8 +89,11 @@ fun ServerScreen(
                     isRunning = uiState.isRunning,
                     ipAddress = uiState.ipAddress,
                     port = uiState.port,
+                    diagResult = uiState.diagResult,
+                    diagRunning = uiState.diagRunning,
                     onStart = { viewModel.startServer() },
-                    onStop = { viewModel.stopServer() }
+                    onStop = { viewModel.stopServer() },
+                    onDiagnostics = { viewModel.runDiagnostics() }
                 )
             }
 
@@ -126,8 +130,11 @@ private fun ServerStatusCard(
     isRunning: Boolean,
     ipAddress: String,
     port: Int,
+    diagResult: String?,
+    diagRunning: Boolean,
     onStart: () -> Unit,
     onStop: () -> Unit,
+    onDiagnostics: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Card(
@@ -180,6 +187,32 @@ private fun ServerStatusCard(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text(if (isRunning) "Stop server" else "Start server")
+            }
+
+            if (isRunning) {
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedButton(
+                    onClick = onDiagnostics,
+                    enabled = !diagRunning,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(if (diagRunning) "Testing..." else "Test connection")
+                }
+            }
+
+            if (diagResult != null) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Card(
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.tertiaryContainer
+                    )
+                ) {
+                    Text(
+                        text = diagResult,
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(8.dp)
+                    )
+                }
             }
         }
     }
