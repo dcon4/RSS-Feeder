@@ -13,6 +13,9 @@ interface ArticleDao {
     @Query("SELECT * FROM articles WHERE feed_id = :feedId ORDER BY published_date DESC")
     fun getArticlesForFeed(feedId: Long): Flow<List<ArticleEntity>>
 
+    @Query("SELECT * FROM articles WHERE feed_id = :feedId ORDER BY published_date DESC")
+    suspend fun getArticleListForFeed(feedId: Long): List<ArticleEntity>
+
     @Query("SELECT * FROM articles ORDER BY published_date DESC")
     fun getAllArticles(): Flow<List<ArticleEntity>>
 

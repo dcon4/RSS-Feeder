@@ -19,6 +19,10 @@ class FeedRepository(
         }
     }
 
+    suspend fun getFeedList(): List<Feed> {
+        return feedDao.getFeedList().map { it.toDomain() }
+    }
+
     suspend fun getFeedById(id: Long): Feed? {
         return feedDao.getFeedById(id)?.toDomain()
     }

@@ -15,6 +15,10 @@ class ArticleRepository(
         }
     }
 
+    suspend fun getArticlesForFeedList(feedId: Long): List<Article> {
+        return articleDao.getArticleListForFeed(feedId).map { it.toDomain() }
+    }
+
     fun getAllArticles(): Flow<List<Article>> {
         return articleDao.getAllArticles().map { entities ->
             entities.map { it.toDomain() }
