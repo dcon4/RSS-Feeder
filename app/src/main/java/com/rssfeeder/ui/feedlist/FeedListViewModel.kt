@@ -13,10 +13,12 @@ import com.rssfeeder.debug.DebugLogger
 import com.rssfeeder.feed.FullTextExtractor
 import com.rssfeeder.feed.LocalFeedScanner
 import com.rssfeeder.feed.RssFetcher
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 data class FeedListUiState(
     val feeds: List<FeedWithCount> = emptyList(),
@@ -70,7 +72,9 @@ class FeedListViewModel(application: Application) : AndroidViewModel(application
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
             try {
-                val articles = rssFetcher.fetchFeed(url)
+                val articles = withContext(Dispatchers.IO) {
+                    rssFetcher.fetchFeed(url)
+                }
                 if (articles.isEmpty()) {
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,
@@ -82,24 +86,26 @@ class FeedListViewModel(application: Application) : AndroidViewModel(application
                 val title = articles.firstOrNull()?.let { extractTitle(it.title, url) } ?: "Feed"
                 val feedId = feedRepository.addFeed(title, url, FeedType.REMOTE)
 
-                val fullArticles = articles.map { article ->
-                    val fullContent = article.link.let { link ->
-                        fullTextExtractor.extractFullText(link)
+                val fullArticles = withContext(Dispatchers.IO) {
+                    articles.map { article ->
+                        val fullContent = article.link.let { link ->
+                            fullTextExtractor.extractFullText(link)
+                        }
+                        article.copy(
+                            feedId = feedId,
+                            content = fullContent ?: article.summary
+                        )
                     }
-                    article.copy(
-                        feedId = feedId,
-                        content = fullContent ?: article.summary
-                    )
                 }
 
                 articleRepository.insertArticles(fullArticles)
                 feedRepository.updateRefreshTime(feedId, System.currentTimeMillis())
                 _uiState.value = _uiState.value.copy(isLoading = false)
             } catch (e: Exception) {
-                DebugLogger.log("FeedListVM", "Failed to add feed: ${e.message}")
+                DebugLogger.log("FeedListVM", "Failed to add feed: ${e.message ?: "Unknown error"}")
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
-                    error = "Failed to add feed: ${e.message}"
+                    error = "Failed to add feed: ${e.message ?: "Unknown error"}"
                 )
             }
         }
@@ -115,12 +121,14 @@ class FeedListViewModel(application: Application) : AndroidViewModel(application
                     type = FeedType.LOCAL_FOLDER
                 )
 
-                val articles = localFeedScanner.scanFolder(
-                    context = getApplication(),
-                    folderUri = folderUri,
-                    feedId = feedId,
-                    feedUrl = folderUri.toString()
-                )
+                val articles = withContext(Dispatchers.IO) {
+                    localFeedScanner.scanFolder(
+                        context = getApplication(),
+                        folderUri = folderUri,
+                        feedId = feedId,
+                        feedUrl = folderUri.toString()
+                    )
+                }
 
                 articleRepository.insertArticles(articles)
                 feedRepository.updateRefreshTime(feedId, System.currentTimeMillis())
@@ -165,7 +173,9 @@ class FeedListViewModel(application: Application) : AndroidViewModel(application
     }
 
     private suspend fun refreshRemoteFeed(feed: Feed) {
-        val articles = rssFetcher.fetchFeed(feed.url)
+        val articles = withContext(Dispatchers.IO) {
+            rssFetcher.fetchFeed(feed.url)
+        }
         val newArticles = articles.mapNotNull { article ->
             val existing = articleRepository.getArticleByLink(article.link)
             if (existing != null) null
@@ -184,12 +194,14 @@ class FeedListViewModel(application: Application) : AndroidViewModel(application
     private suspend fun refreshLocalFeed(feed: Feed) {
         val folderUri = Uri.parse(feed.url)
         articleRepository.deleteArticlesForFeed(feed.id)
-        val articles = localFeedScanner.scanFolder(
-            context = getApplication(),
-            folderUri = folderUri,
-            feedId = feed.id,
-            feedUrl = feed.url
-        )
+        val articles = withContext(Dispatchers.IO) {
+            localFeedScanner.scanFolder(
+                context = getApplication(),
+                folderUri = folderUri,
+                feedId = feed.id,
+                feedUrl = feed.url
+            )
+        }
         articleRepository.insertArticles(articles)
         feedRepository.updateRefreshTime(feed.id, System.currentTimeMillis())
         feedRepository.updateError(feed.id, null)

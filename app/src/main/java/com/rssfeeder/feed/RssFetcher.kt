@@ -101,8 +101,9 @@ class RssFetcher {
             DebugLogger.log("RssFetcher", "Fetched ${articles.size} articles from $feedUrl")
             articles
         } catch (e: Exception) {
-            DebugLogger.log("RssFetcher", "Failed to fetch feed $feedUrl: ${e.message}")
-            throw e
+            val msg = e.message ?: e.javaClass.simpleName
+            DebugLogger.log("RssFetcher", "Failed to fetch feed $feedUrl: $msg")
+            throw RuntimeException("Failed to fetch feed: $msg", e)
         }
     }
 
