@@ -35,7 +35,7 @@ class SyncWorker(
                 try {
                     if (feed.type != FeedType.REMOTE) continue
 
-                    val articles = rssFetcher.fetchFeed(feed.url)
+                    val articles = rssFetcher.fetchFeed(feed.url).articles
                     var newCount = 0
 
                     for (article in articles) {

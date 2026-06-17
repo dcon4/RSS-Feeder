@@ -174,10 +174,10 @@ class FeedListViewModel(application: Application) : AndroidViewModel(application
     }
 
     private suspend fun refreshRemoteFeed(feed: Feed) {
-        val articles = withContext(Dispatchers.IO) {
+        val result = withContext(Dispatchers.IO) {
             rssFetcher.fetchFeed(feed.url)
         }
-        val newArticles = articles.mapNotNull { article ->
+        val newArticles = result.articles.mapNotNull { article ->
             val existing = articleRepository.getArticleByLink(article.link)
             if (existing != null) null
             else {
