@@ -19,17 +19,22 @@ data class ServerUiState(
     val port: Int = ServerService.DEFAULT_PORT,
     val feeds: List<FeedWithUrl> = emptyList(),
     val diagResult: String? = null,
-    val diagRunning: Boolean = false
+    val diagRunning: Boolean = false,
+    val certGenerated: Boolean = false,
+    val hasHttps: Boolean = false
 )
 
 data class FeedWithUrl(
     val feed: Feed,
     val localUrl: String,
-    val networkUrl: String
+    val networkUrl: String,
+    val localHttpsUrl: String = "",
+    val networkHttpsUrl: String = ""
 )
 
 class ServerViewModel(application: Application) : AndroidViewModel(application) {
 
+    private val app = application
     private val feedRepository = FeedRepository(
         AppDatabase.getInstance(application).feedDao(),
         AppDatabase.getInstance(application).articleDao()
@@ -43,23 +48,34 @@ class ServerViewModel(application: Application) : AndroidViewModel(application) 
             ServerService.serverState.collect { serviceState ->
                 val feeds = feedRepository.getFeedList()
                 val port = serviceState.port
+                val httpsPort = ServerService.DEFAULT_HTTPS_PORT
                 val networkBase = if (serviceState.isRunning) {
                     "http://${serviceState.ipAddress}:$port"
                 } else ""
                 val localBase = if (serviceState.isRunning) {
                     "http://127.0.0.1:$port"
                 } else ""
+                val networkHttpsBase = if (serviceState.isRunning && serviceState.hasHttps) {
+                    "https://${serviceState.ipAddress}:$httpsPort"
+                } else ""
+                val localHttpsBase = if (serviceState.isRunning && serviceState.hasHttps) {
+                    "https://127.0.0.1:$httpsPort"
+                } else ""
 
                 _uiState.value = ServerUiState(
                     isRunning = serviceState.isRunning,
                     ipAddress = serviceState.ipAddress,
                     port = port,
+                    certGenerated = CertificateManager.isCertGenerated(app),
+                    hasHttps = serviceState.hasHttps,
                     feeds = feeds.map { feed ->
                         val suffix = "/feed/${feed.id}/rss.xml"
                         FeedWithUrl(
                             feed = feed,
                             localUrl = "$localBase$suffix",
-                            networkUrl = "$networkBase$suffix"
+                            networkUrl = "$networkBase$suffix",
+                            localHttpsUrl = "$localHttpsBase$suffix",
+                            networkHttpsUrl = "$networkHttpsBase$suffix"
                         )
                     }
                 )
@@ -68,11 +84,23 @@ class ServerViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun startServer() {
-        ServerService.start(getApplication())
+        if (!CertificateManager.isCertGenerated(app)) {
+            try {
+                CertificateManager.generate(app)
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(diagResult = "Cert generation failed: ${e.message}")
+                return
+            }
+        }
+        ServerService.start(app)
     }
 
     fun stopServer() {
-        ServerService.stop(getApplication())
+        ServerService.stop(app)
+    }
+
+    fun installCert() {
+        ServerService.installCert(app)
     }
 
     fun refreshFeeds() {
@@ -80,15 +108,20 @@ class ServerViewModel(application: Application) : AndroidViewModel(application) 
             val feeds = feedRepository.getFeedList()
             val state = _uiState.value
             val port = state.port
+            val httpsPort = ServerService.DEFAULT_HTTPS_PORT
             val networkBase = if (state.isRunning) "http://${state.ipAddress}:$port" else ""
             val localBase = if (state.isRunning) "http://127.0.0.1:$port" else ""
+            val networkHttpsBase = if (state.isRunning && state.hasHttps) "https://${state.ipAddress}:$httpsPort" else ""
+            val localHttpsBase = if (state.isRunning && state.hasHttps) "https://127.0.0.1:$httpsPort" else ""
             _uiState.value = state.copy(
                 feeds = feeds.map { feed ->
                     val suffix = "/feed/${feed.id}/rss.xml"
                     FeedWithUrl(
                         feed = feed,
                         localUrl = "$localBase$suffix",
-                        networkUrl = "$networkBase$suffix"
+                        networkUrl = "$networkBase$suffix",
+                        localHttpsUrl = "$localHttpsBase$suffix",
+                        networkHttpsUrl = "$networkHttpsBase$suffix"
                     )
                 }
             )
@@ -111,9 +144,27 @@ class ServerViewModel(application: Application) : AndroidViewModel(application) 
                         conn.errorStream?.bufferedReader()?.readText() ?: "No body"
                     }
                     conn.disconnect()
-                    "Server: HTTP $code\n$body"
+                    "HTTP health: $code $body"
                 } catch (e: Exception) {
-                    "Server ERROR: ${e.message}"
+                    "HTTP health ERROR: ${e.message}"
+                }
+            }
+            val httpsResult = withContext(Dispatchers.IO) {
+                try {
+                    val url = java.net.URL("https://127.0.0.1:${ServerService.DEFAULT_HTTPS_PORT}/health")
+                    val conn = url.openConnection() as javax.net.ssl.HttpsURLConnection
+                    conn.connectTimeout = 5000
+                    conn.readTimeout = 5000
+                    val code = conn.responseCode
+                    val body = if (code in 200..299) {
+                        conn.inputStream.bufferedReader().use { it.readText() }
+                    } else {
+                        conn.errorStream?.bufferedReader()?.readText() ?: "No body"
+                    }
+                    conn.disconnect()
+                    "HTTPS health: $code $body"
+                } catch (e: Exception) {
+                    "HTTPS health ERROR: ${e.message}"
                 }
             }
             val feedsResult = withContext(Dispatchers.IO) {
@@ -139,7 +190,7 @@ class ServerViewModel(application: Application) : AndroidViewModel(application) 
                 }
             }
             _uiState.value = _uiState.value.copy(
-                diagResult = "$result\n\n$feedsResult",
+                diagResult = "$result\n$httpsResult\n\n$feedsResult",
                 diagRunning = false
             )
         }

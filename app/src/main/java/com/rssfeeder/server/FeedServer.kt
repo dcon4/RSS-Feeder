@@ -6,14 +6,22 @@ import com.rssfeeder.data.repository.ArticleRepository
 import com.rssfeeder.data.repository.FeedRepository
 import com.rssfeeder.debug.DebugLogger
 import fi.iki.elonen.NanoHTTPD
+import javax.net.ssl.SSLServerSocketFactory
 import kotlinx.coroutines.runBlocking
 
 class FeedServer(
     port: Int,
-    private val context: Context
+    private val context: Context,
+    private val sslFactory: SSLServerSocketFactory? = null
 ) : NanoHTTPD(port) {
 
-    private var baseUrl: String = "http://127.0.0.1:$port"
+    private var baseUrl: String = if (sslFactory != null) "https://127.0.0.1:$port" else "http://127.0.0.1:$port"
+
+    init {
+        if (sslFactory != null) {
+            makeSecure(sslFactory, null)
+        }
+    }
 
     private val db by lazy { AppDatabase.getInstance(context) }
     private val feedRepository by lazy { FeedRepository(db.feedDao(), db.articleDao()) }

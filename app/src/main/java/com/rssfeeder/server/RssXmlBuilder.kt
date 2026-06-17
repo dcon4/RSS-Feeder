@@ -82,11 +82,6 @@ object RssXmlBuilder {
     }
 
     private fun toCdata(text: String): String {
-        if (!text.contains("]]>")) {
-            return "<![CDATA[$text]]>"
-        }
-        return text.split("]]>").joinToString("") { part ->
-            "<![CDATA[$part]]>]]><![CDATA[>"
-        }
+        return "<![CDATA[" + text.replace("]]>", "]]]]><![CDATA[>") + "]]>"
     }
 }

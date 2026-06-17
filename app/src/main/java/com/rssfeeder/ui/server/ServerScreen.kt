@@ -89,11 +89,14 @@ fun ServerScreen(
                     isRunning = uiState.isRunning,
                     ipAddress = uiState.ipAddress,
                     port = uiState.port,
+                    hasHttps = uiState.hasHttps,
+                    certGenerated = uiState.certGenerated,
                     diagResult = uiState.diagResult,
                     diagRunning = uiState.diagRunning,
                     onStart = { viewModel.startServer() },
                     onStop = { viewModel.stopServer() },
-                    onDiagnostics = { viewModel.runDiagnostics() }
+                    onDiagnostics = { viewModel.runDiagnostics() },
+                    onInstallCert = { viewModel.installCert() }
                 )
             }
 
@@ -118,6 +121,12 @@ fun ServerScreen(
                     },
                     onCopyNetwork = {
                         copyToClipboard(context, feedWithUrl.networkUrl)
+                    },
+                    onCopyLocalHttps = {
+                        copyToClipboard(context, feedWithUrl.localHttpsUrl)
+                    },
+                    onCopyNetworkHttps = {
+                        copyToClipboard(context, feedWithUrl.networkHttpsUrl)
                     }
                 )
             }
@@ -130,11 +139,14 @@ private fun ServerStatusCard(
     isRunning: Boolean,
     ipAddress: String,
     port: Int,
+    hasHttps: Boolean,
+    certGenerated: Boolean,
     diagResult: String?,
     diagRunning: Boolean,
     onStart: () -> Unit,
     onStop: () -> Unit,
     onDiagnostics: () -> Unit,
+    onInstallCert: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Card(
@@ -149,7 +161,7 @@ private fun ServerStatusCard(
             Spacer(modifier = Modifier.height(8.dp))
 
             val statusText = if (isRunning) {
-                "Running on port $port"
+                "Running"
             } else {
                 "Not running"
             }
@@ -163,15 +175,27 @@ private fun ServerStatusCard(
             if (isRunning) {
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = "Local: http://127.0.0.1:$port",
+                    text = "HTTP: http://127.0.0.1:$port",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Text(
-                    text = "Network: http://$ipAddress:$port",
+                    text = "HTTP: http://$ipAddress:$port",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+                if (hasHttps) {
+                    Text(
+                        text = "HTTPS: https://127.0.0.1:${ServerService.DEFAULT_HTTPS_PORT}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = "HTTPS: https://$ipAddress:${ServerService.DEFAULT_HTTPS_PORT}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
                 Text(
                     text = "Add these URLs to your RSS reader",
                     style = MaterialTheme.typography.bodySmall,
@@ -200,6 +224,16 @@ private fun ServerStatusCard(
                 }
             }
 
+            if (certGenerated) {
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedButton(
+                    onClick = onInstallCert,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Install CA certificate")
+                }
+            }
+
             if (diagResult != null) {
                 Spacer(modifier = Modifier.height(8.dp))
                 Card(
@@ -223,6 +257,8 @@ private fun FeedRssCard(
     feedWithUrl: FeedWithUrl,
     onCopyLocal: () -> Unit,
     onCopyNetwork: () -> Unit,
+    onCopyLocalHttps: () -> Unit = {},
+    onCopyNetworkHttps: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     Card(
@@ -248,17 +284,32 @@ private fun FeedRssCard(
             Spacer(modifier = Modifier.height(8.dp))
 
             UrlCopyRow(
-                label = "Same device",
+                label = "Same device (HTTP)",
                 url = feedWithUrl.localUrl,
                 onCopy = onCopyLocal
             )
             Spacer(modifier = Modifier.height(4.dp))
             UrlCopyRow(
-                label = "Other devices",
+                label = "Other devices (HTTP)",
                 url = feedWithUrl.networkUrl,
                 onCopy = onCopyNetwork
             )
-        }
+            if (feedWithUrl.localHttpsUrl.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(4.dp))
+                UrlCopyRow(
+                    label = "Same device (HTTPS)",
+                    url = feedWithUrl.localHttpsUrl,
+                    onCopy = onCopyLocalHttps
+                )
+            }
+            if (feedWithUrl.networkHttpsUrl.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(4.dp))
+                UrlCopyRow(
+                    label = "Other devices (HTTPS)",
+                    url = feedWithUrl.networkHttpsUrl,
+                    onCopy = onCopyNetworkHttps
+                )
+            }}
     }
 }
 

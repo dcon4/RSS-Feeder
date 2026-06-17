@@ -28,7 +28,8 @@ import kotlinx.coroutines.launch
 
 class ServerService : Service() {
 
-    private var server: FeedServer? = null
+    private var httpServer: FeedServer? = null
+    private var httpsServer: FeedServer? = null
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var networkCallback: ConnectivityManager.NetworkCallback? = null
 
@@ -43,6 +44,7 @@ class ServerService : Service() {
         when (intent?.action) {
             ACTION_START -> startServer()
             ACTION_STOP -> stopServer()
+            ACTION_INSTALL_CERT -> handleInstallCert()
         }
         return START_STICKY
     }
@@ -50,28 +52,50 @@ class ServerService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
     private fun startServer() {
-        if (server != null) return
+        if (httpServer != null) return
         try {
-            val port = DEFAULT_PORT
-            val newServer = FeedServer(port, this)
-            newServer.start()
-            server = newServer
+            if (!CertificateManager.isCertGenerated(this)) {
+                CertificateManager.generate(this)
+            }
+
+            val httpPort = DEFAULT_PORT
+            val http = FeedServer(httpPort, this)
+            http.start()
+            httpServer = http
+
+            val httpsPort = DEFAULT_HTTPS_PORT
+            val sslFactory = CertificateManager.getSslServerSocketFactory(this)
+            if (sslFactory != null) {
+                val https = FeedServer(httpsPort, this, sslFactory)
+                https.start()
+                httpsServer = https
+            }
 
             updateState()
             registerNetworkCallback()
 
-            DebugLogger.log("ServerService", "Server started on port $port")
+            DebugLogger.log("ServerService", "Servers started on HTTP:$httpPort HTTPS:$httpsPort")
         } catch (e: Exception) {
             DebugLogger.log("ServerService", "Failed to start server: ${e.message}")
             stopSelf()
         }
     }
 
+    private fun handleInstallCert() {
+        val intent = CertificateManager.getInstallIntent(this)
+        if (intent != null) {
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            startActivity(intent)
+        }
+    }
+
     private fun stopServer() {
-        server?.stop()
-        server = null
+        httpServer?.stop()
+        httpServer = null
+        httpsServer?.stop()
+        httpsServer = null
         unregisterNetworkCallback()
-        _serverState.value = ServerState(false, "127.0.0.1", DEFAULT_PORT)
+        _serverState.value = ServerState(false, "127.0.0.1", DEFAULT_PORT, false)
         stopForeground(STOP_FOREGROUND_DETACH)
         stopSelf()
     }
@@ -79,8 +103,9 @@ class ServerService : Service() {
     private fun updateState() {
         val ip = getLocalIpAddress()
         val port = DEFAULT_PORT
-        server?.setBaseUrl("http://$ip:$port")
-        _serverState.value = ServerState(true, ip, port)
+        httpServer?.setBaseUrl("http://$ip:$port")
+        httpsServer?.setBaseUrl("https://$ip:$port")
+        _serverState.value = ServerState(true, ip, port, true)
         val notification = buildNotification(true, ip)
         startForeground(NOTIFICATION_ID, notification)
     }
@@ -169,8 +194,10 @@ class ServerService : Service() {
     }
 
     override fun onDestroy() {
-        server?.stop()
-        server = null
+        httpServer?.stop()
+        httpServer = null
+        httpsServer?.stop()
+        httpsServer = null
         instance = null
         unregisterNetworkCallback()
         super.onDestroy()
@@ -179,15 +206,18 @@ class ServerService : Service() {
     data class ServerState(
         val isRunning: Boolean,
         val ipAddress: String,
-        val port: Int
+        val port: Int,
+        val hasHttps: Boolean = false
     )
 
     companion object {
         const val DEFAULT_PORT = 8080
+        const val DEFAULT_HTTPS_PORT = 8081
         const val CHANNEL_ID = "rss_feeder_server"
         const val NOTIFICATION_ID = 1001
         const val ACTION_START = "com.rssfeeder.action.START_SERVER"
         const val ACTION_STOP = "com.rssfeeder.action.STOP_SERVER"
+        const val ACTION_INSTALL_CERT = "com.rssfeeder.action.INSTALL_CERT"
 
         private val _serverState = MutableStateFlow(ServerState(false, "127.0.0.1", DEFAULT_PORT))
         val serverState: StateFlow<ServerState> = _serverState.asStateFlow()
@@ -207,6 +237,15 @@ class ServerService : Service() {
 
         fun stop(context: Context) {
             instance?.stopServer()
+        }
+
+        fun installCert(context: Context) {
+            instance?.let { service ->
+                val intent = Intent(service, ServerService::class.java).apply {
+                    action = ACTION_INSTALL_CERT
+                }
+                service.startService(intent)
+            }
         }
     }
 }
