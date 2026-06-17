@@ -117,7 +117,7 @@ class ServerViewModel(application: Application) : AndroidViewModel(application) 
 
     fun pushAllFeeds() {
         viewModelScope.launch {
-            val pat = getPat()
+            val pat = _uiState.value.relayPat
             if (pat.isEmpty()) {
                 _uiState.value = _uiState.value.copy(
                     pushResult = "No GitHub PAT set. Go to Settings to add one."
