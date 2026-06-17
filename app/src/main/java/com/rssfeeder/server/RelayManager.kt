@@ -15,12 +15,12 @@ object RelayManager {
     private const val PAGES_BASE = "https://dcon4.github.io"
 
     fun getRelayUrl(feedId: Long): String {
-        return "$PAGES_BASE/$RELAY_REPO/feeds/$feedId.rss"
+        return "$PAGES_BASE/$RELAY_REPO/feeds/$feedId.xml"
     }
 
     fun pushFeed(pat: String, feedId: Long, rssXml: String): String? {
         return try {
-            val path = "feeds/$feedId.rss"
+            val path = "feeds/$feedId.xml"
             val existingSha = getExistingSha(pat, path)
 
             val url = URL("$API_BASE/repos/$RELAY_OWNER/$RELAY_REPO/contents/$path")
