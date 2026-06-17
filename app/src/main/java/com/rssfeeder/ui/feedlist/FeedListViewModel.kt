@@ -10,6 +10,7 @@ import com.rssfeeder.data.model.FeedType
 import com.rssfeeder.data.repository.ArticleRepository
 import com.rssfeeder.data.repository.FeedRepository
 import com.rssfeeder.debug.DebugLogger
+import com.rssfeeder.feed.FeedFetchResult
 import com.rssfeeder.feed.FullTextExtractor
 import com.rssfeeder.feed.LocalFeedScanner
 import com.rssfeeder.feed.RssFetcher
@@ -68,14 +69,14 @@ class FeedListViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
-    fun addFeedByUrl(url: String) {
+    fun addFeedByUrl(url: String, customTitle: String? = null) {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
             try {
-                val articles = withContext(Dispatchers.IO) {
+                val result: FeedFetchResult = withContext(Dispatchers.IO) {
                     rssFetcher.fetchFeed(url)
                 }
-                if (articles.isEmpty()) {
+                if (result.articles.isEmpty()) {
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,
                         error = "No articles found in feed"
@@ -83,11 +84,11 @@ class FeedListViewModel(application: Application) : AndroidViewModel(application
                     return@launch
                 }
 
-                val title = articles.firstOrNull()?.let { extractTitle(it.title, url) } ?: "Feed"
+                val title = customTitle?.takeIf { it.isNotBlank() } ?: result.title
                 val feedId = feedRepository.addFeed(title, url, FeedType.REMOTE)
 
                 val fullArticles = withContext(Dispatchers.IO) {
-                    articles.map { article ->
+                    result.articles.map { article ->
                         val fullContent = article.link.let { link ->
                             fullTextExtractor.extractFullText(link)
                         }
@@ -209,17 +210,5 @@ class FeedListViewModel(application: Application) : AndroidViewModel(application
 
     fun clearError() {
         _uiState.value = _uiState.value.copy(error = null)
-    }
-
-    private fun extractTitle(firstArticleTitle: String?, url: String): String {
-        if (firstArticleTitle.isNullOrBlank()) {
-            return try {
-                val uri = Uri.parse(url)
-                uri.host?.removePrefix("www.") ?: url
-            } catch (e: Exception) {
-                url
-            }
-        }
-        return firstArticleTitle.trim().take(80)
     }
 }

@@ -103,8 +103,8 @@ class MainActivity : ComponentActivity() {
 
             composable("add_feed") {
                 AddFeedScreen(
-                    onAddUrl = { url ->
-                        feedListViewModel.addFeedByUrl(url)
+                    onAddFeed = { url, title ->
+                        feedListViewModel.addFeedByUrl(url, title.takeIf { it.isNotEmpty() })
                         navController.popBackStack()
                         serverViewModel.refreshFeeds()
                     },

@@ -8,10 +8,15 @@ import java.text.SimpleDateFormat
 import java.util.Locale
 import org.xmlpull.v1.XmlPullParser
 
+data class FeedFetchResult(
+    val title: String,
+    val articles: List<Article>
+)
+
 @Suppress("DEPRECATION")
 class RssFetcher {
 
-    fun fetchFeed(feedUrl: String): List<Article> {
+    fun fetchFeed(feedUrl: String): FeedFetchResult {
         DebugLogger.log("RssFetcher", "Fetching feed: $feedUrl")
         return try {
             val url = URL(feedUrl)
@@ -26,12 +31,14 @@ class RssFetcher {
             parser.setInput(inputStream.bufferedReader())
 
             val articles = mutableListOf<Article>()
+            var feedTitle: String? = null
             var currentTitle: String? = null
             var currentLink: String? = null
             var currentAuthor: String? = null
             var currentDate: String? = null
             var currentSummary: String? = null
             var inItem = false
+            var inChannel = false
             var tagContent = StringBuilder()
 
             var eventType = parser.eventType
@@ -40,6 +47,7 @@ class RssFetcher {
                     XmlPullParser.START_TAG -> {
                         val tagName = parser.name.lowercase()
                         when (tagName) {
+                            "channel" -> inChannel = true
                             "item", "entry" -> {
                                 inItem = true
                                 currentTitle = null
@@ -62,12 +70,15 @@ class RssFetcher {
                     XmlPullParser.TEXT -> {
                         if (inItem) {
                             tagContent.append(parser.text)
+                        } else if (inChannel && feedTitle == null) {
+                            tagContent.append(parser.text)
                         }
                     }
                     XmlPullParser.END_TAG -> {
+                        val tagName = parser.name.lowercase()
                         if (inItem) {
                             val text = tagContent.toString().trim()
-                            when (parser.name.lowercase()) {
+                            when (tagName) {
                                 "item", "entry" -> {
                                     if (currentTitle != null || currentLink != null) {
                                         articles.add(
@@ -92,14 +103,22 @@ class RssFetcher {
                                 "description", "summary" ->
                                     if (currentSummary == null) currentSummary = text
                             }
+                        } else if (inChannel && tagName == "title" && feedTitle == null) {
+                            feedTitle = tagContent.toString().trim()
+                        } else if (tagName == "channel") {
+                            inChannel = false
                         }
                     }
                 }
                 eventType = parser.next()
             }
 
-            DebugLogger.log("RssFetcher", "Fetched ${articles.size} articles from $feedUrl")
-            articles
+            val title = feedTitle?.takeIf { it.isNotBlank() }
+                ?: try { URL(feedUrl).host?.removePrefix("www.") ?: feedUrl }
+                catch (_: Exception) { feedUrl }
+
+            DebugLogger.log("RssFetcher", "Fetched ${articles.size} articles from $feedUrl, title=$title")
+            FeedFetchResult(title = title, articles = articles)
         } catch (e: Exception) {
             val msg = e.message ?: e.javaClass.simpleName
             DebugLogger.log("RssFetcher", "Failed to fetch feed $feedUrl: $msg")

@@ -4,6 +4,7 @@ import com.rssfeeder.debug.DebugLogger
 import java.io.OutputStreamWriter
 import java.net.HttpURLConnection
 import java.net.URL
+import java.security.MessageDigest
 import java.util.Base64
 
 object RelayManager {
@@ -14,13 +15,20 @@ object RelayManager {
     private const val API_BASE = "https://api.github.com"
     private const val PAGES_BASE = "https://dcon4.github.io"
 
+    fun feedToken(feedId: Long): String {
+        val digest = MessageDigest.getInstance("SHA-256")
+            .digest("rss_feeder_relay_$feedId".toByteArray())
+        return digest.take(8).joinToString("") { "%02x".format(it) }
+    }
+
     fun getRelayUrl(feedId: Long): String {
-        return "$PAGES_BASE/$RELAY_REPO/feeds/$feedId.xml"
+        return "$PAGES_BASE/$RELAY_REPO/feeds/${feedToken(feedId)}.xml"
     }
 
     fun pushFeed(pat: String, feedId: Long, rssXml: String): String? {
+        val token = feedToken(feedId)
         return try {
-            val path = "feeds/$feedId.xml"
+            val path = "feeds/$token.xml"
             val existingSha = getExistingSha(pat, path)
 
             val url = URL("$API_BASE/repos/$RELAY_OWNER/$RELAY_REPO/contents/$path")

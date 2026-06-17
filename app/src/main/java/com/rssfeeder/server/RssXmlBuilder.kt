@@ -19,7 +19,8 @@ object RssXmlBuilder {
         writer.write("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n")
         writer.write("<rss version=\"2.0\"\n")
         writer.write("  xmlns:content=\"http://purl.org/rss/1.0/modules/content/\"\n")
-        writer.write("  xmlns:atom=\"http://www.w3.org/2005/Atom\">\n")
+        writer.write("  xmlns:atom=\"http://www.w3.org/2005/Atom\"\n")
+        writer.write("  xmlns:dc=\"http://purl.org/dc/elements/1.1/\">\n")
         writer.write("  <channel>\n")
         writer.write("    <title>${escapeXml(feed.title)}</title>\n")
         writer.write("    <link>${escapeXml(channelLink)}</link>\n")
@@ -31,19 +32,20 @@ object RssXmlBuilder {
         writer.write("    <lastBuildDate>${rfc822Format.format(Date())}</lastBuildDate>\n")
 
         for (article in articles) {
+            val guid = "feed-${feed.id}-${article.link}"
             writer.write("    <item>\n")
             writer.write("      <title>${escapeXml(article.title)}</title>\n")
             writer.write("      <link>${escapeXml(article.link)}</link>\n")
-            writer.write("      <guid isPermaLink=\"false\">${escapeXml(article.link)}</guid>\n")
+            writer.write("      <guid isPermaLink=\"false\">${escapeXml(guid)}</guid>\n")
             if (article.author != null) {
                 writer.write("      <author>${escapeXml(article.author)}</author>\n")
+                writer.write("      <dc:creator>${escapeXml(article.author)}</dc:creator>\n")
             }
             if (article.publishedDate > 0) {
                 writer.write("      <pubDate>${rfc822Format.format(Date(article.publishedDate))}</pubDate>\n")
             }
-            if (article.summary != null) {
-                writer.write("      <description>${toCdata(article.summary)}</description>\n")
-            }
+            val descText = article.summary ?: article.content ?: ""
+            writer.write("      <description>${toCdata(descText)}</description>\n")
             val content = article.content ?: article.summary ?: ""
             writer.write("      <content:encoded>${toCdata(content)}</content:encoded>\n")
             writer.write("    </item>\n")

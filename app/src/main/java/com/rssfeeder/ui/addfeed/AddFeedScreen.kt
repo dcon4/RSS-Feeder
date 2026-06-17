@@ -39,13 +39,14 @@ import com.rssfeeder.ui.components.RssFeederTopBar
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddFeedScreen(
-    onAddUrl: (String) -> Unit,
+    onAddFeed: (url: String, title: String) -> Unit,
     onAddLocalFolder: () -> Unit,
     onBackClick: () -> Unit,
     onShareLog: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     var urlText by remember { mutableStateOf("") }
+    var feedTitle by remember { mutableStateOf("") }
 
     Scaffold(
         topBar = {
@@ -97,11 +98,20 @@ fun AddFeedScreen(
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true
                     )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = feedTitle,
+                        onValueChange = { feedTitle = it },
+                        label = { Text("Feed title (optional)") },
+                        placeholder = { Text("Leave blank for auto-detect") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
+                    )
                     Spacer(modifier = Modifier.height(12.dp))
                     Button(
                         onClick = {
                             if (urlText.isNotBlank()) {
-                                onAddUrl(urlText.trim())
+                                onAddFeed(urlText.trim(), feedTitle.trim())
                             }
                         },
                         enabled = urlText.isNotBlank(),
