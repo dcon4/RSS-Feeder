@@ -37,6 +37,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.rssfeeder.server.FeedWithUrl
+import com.rssfeeder.server.ServerService
 import com.rssfeeder.server.ServerViewModel
 import com.rssfeeder.ui.components.RssFeederTopBar
 
