@@ -73,7 +73,7 @@ dependencies {
 
     implementation("com.google.android.material:material:1.12.0")
     implementation("org.nanohttpd:nanohttpd:2.3.1")
-    implementation("org.bouncycastle:bcpkix-jdk15on:1.70")
+    implementation("org.bouncycastle:bcpkix-jdk15to18:1.72")
     implementation("org.jsoup:jsoup:1.17.2")
     implementation("com.tom-roush:pdfbox-android:2.0.27.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
