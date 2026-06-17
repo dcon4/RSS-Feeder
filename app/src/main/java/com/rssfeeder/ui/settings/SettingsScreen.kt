@@ -21,6 +21,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -51,6 +52,16 @@ fun SettingsScreen(
     val savedPat by DebugLogger.getGithubPatFlow().collectAsState(initial = "")
     var patInput by rememberSaveable { mutableStateOf(savedPat) }
     var patVisible by rememberSaveable { mutableStateOf(false) }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            if (patInput != savedPat) {
+                scope.launch {
+                    DebugLogger.persistGithubPat(context, patInput)
+                }
+            }
+        }
+    }
 
     Scaffold(
         topBar = {

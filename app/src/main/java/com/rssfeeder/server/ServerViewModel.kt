@@ -11,7 +11,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -51,8 +50,9 @@ class ServerViewModel(application: Application) : AndroidViewModel(application) 
 
     init {
         viewModelScope.launch {
-            val pat = getPat()
-            _uiState.value = _uiState.value.copy(relayPat = pat)
+            DebugLogger.getGithubPatFlow().collect { pat ->
+                _uiState.value = _uiState.value.copy(relayPat = pat)
+            }
         }
         viewModelScope.launch {
             ServerService.serverState.collect { serviceState ->
@@ -174,10 +174,6 @@ class ServerViewModel(application: Application) : AndroidViewModel(application) 
                 pushRunning = false
             )
         }
-    }
-
-    private suspend fun getPat(): String {
-        return DebugLogger.getGithubPatFlow().first()
     }
 
     fun refreshFeeds() {
