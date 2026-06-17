@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <paths>
     <cache-path name="logs" path="logs/" />
+    <cache-path name="certs" path="certs/" />
     <files-path name="logs_files" path="logs/" />
 </paths>

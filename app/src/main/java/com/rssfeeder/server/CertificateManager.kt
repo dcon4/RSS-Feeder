@@ -2,7 +2,8 @@ package com.rssfeeder.server
 
 import android.content.Context
 import android.content.Intent
-import android.security.KeyChain
+import android.net.Uri
+import androidx.core.content.FileProvider
 import com.rssfeeder.debug.DebugLogger
 import java.io.File
 import java.io.FileInputStream
@@ -161,9 +162,18 @@ object CertificateManager {
 
     fun getInstallIntent(context: Context): Intent? {
         val info = getCertInfo(context) ?: return null
-        return KeyChain.createInstallIntent().apply {
-            putExtra(KeyChain.EXTRA_CERTIFICATE, info.certBytes)
-            putExtra(KeyChain.EXTRA_NAME, "RSS-Feeder CA")
+        val certFile = File(context.cacheDir, "certs/rss-feeder-ca.crt")
+        certFile.parentFile?.mkdirs()
+        certFile.writeBytes(info.certBytes)
+        val uri = FileProvider.getUriForFile(
+            context,
+            "${context.packageName}.fileprovider",
+            certFile
+        )
+        return Intent(Intent.ACTION_VIEW).apply {
+            setDataAndType(uri, "application/x-x509-ca-cert")
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
     }
 }
