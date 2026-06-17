@@ -233,6 +233,13 @@ private fun ServerStatusCard(
                 ) {
                     Text("Install CA certificate")
                 }
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "If no install prompt appears: open Settings > Security > Install certificate > CA certificate. " +
+                            "Find 'rss-feeder-ca.crt' in Downloads.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
 
             if (diagResult != null) {

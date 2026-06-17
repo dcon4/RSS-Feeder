@@ -82,6 +82,7 @@ class ServerService : Service() {
     }
 
     private fun handleInstallCert() {
+        CertificateManager.saveToDownloads(this)
         val intent = CertificateManager.getInstallIntent(this)
         if (intent != null) {
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)

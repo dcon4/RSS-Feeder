@@ -1,8 +1,12 @@
 package com.rssfeeder.server
 
+import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
+import android.os.Environment
+import android.provider.MediaStore
 import androidx.core.content.FileProvider
 import com.rssfeeder.debug.DebugLogger
 import java.io.File
@@ -35,12 +39,6 @@ object CertificateManager {
     private const val KEY_SIZE = 2048
     private const val VALIDITY_YEARS = 10
 
-    data class CertInfo(
-        val certInstalled: Boolean,
-        val certFile: File,
-        val certBytes: ByteArray
-    )
-
     private fun getKeystoreFile(context: Context): File {
         return File(context.filesDir, KEYSTORE_FILE)
     }
@@ -71,24 +69,6 @@ object CertificateManager {
         }
 
         DebugLogger.log("CertificateManager", "Certificate generated at ${file.absolutePath}")
-    }
-
-    fun getCertInfo(context: Context): CertInfo? {
-        val file = getKeystoreFile(context)
-        if (!file.exists()) return null
-
-        return try {
-            val keyStore = loadKeystore(context)
-            val cert = keyStore.getCertificate("server") as X509Certificate
-            CertInfo(
-                certInstalled = false,
-                certFile = file,
-                certBytes = cert.encoded
-            )
-        } catch (e: Exception) {
-            DebugLogger.log("CertificateManager", "Failed to read cert: ${e.message}")
-            null
-        }
     }
 
     fun getSslServerSocketFactory(context: Context): SSLServerSocketFactory? {
@@ -160,11 +140,54 @@ object CertificateManager {
         return cert
     }
 
+    private fun loadCertBytes(context: Context): ByteArray? {
+        return try {
+            val keyStore = loadKeystore(context)
+            val cert = keyStore.getCertificate("server") as X509Certificate
+            cert.encoded
+        } catch (e: Exception) {
+            DebugLogger.log("CertificateManager", "Failed to load cert bytes: ${e.message}")
+            null
+        }
+    }
+
+    fun saveToDownloads(context: Context): Uri? {
+        val certBytes = loadCertBytes(context) ?: return null
+        val fileName = "rss-feeder-ca.crt"
+
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            val contentValues = ContentValues().apply {
+                put(MediaStore.Downloads.DISPLAY_NAME, fileName)
+                put(MediaStore.Downloads.MIME_TYPE, "application/x-x509-ca-cert")
+                put(MediaStore.Downloads.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS)
+            }
+            val uri = context.contentResolver.insert(
+                MediaStore.Downloads.EXTERNAL_CONTENT_URI,
+                contentValues
+            )
+            uri?.let {
+                context.contentResolver.openOutputStream(it)?.use { os ->
+                    os.write(certBytes)
+                }
+            }
+            uri
+        } else {
+            val downloadsDir = Environment.getExternalStoragePublicDirectory(
+                Environment.DIRECTORY_DOWNLOADS
+            )
+            val file = File(downloadsDir, fileName)
+            file.writeBytes(certBytes)
+            Uri.fromFile(file)
+        }
+    }
+
     fun getInstallIntent(context: Context): Intent? {
-        val info = getCertInfo(context) ?: return null
+        val certBytes = loadCertBytes(context) ?: return null
+
         val certFile = File(context.cacheDir, "certs/rss-feeder-ca.crt")
         certFile.parentFile?.mkdirs()
-        certFile.writeBytes(info.certBytes)
+        certFile.writeBytes(certBytes)
+
         val uri = FileProvider.getUriForFile(
             context,
             "${context.packageName}.fileprovider",
