@@ -16,16 +16,17 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.CloudUpload
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -94,10 +95,14 @@ fun ServerScreen(
                     certGenerated = uiState.certGenerated,
                     diagResult = uiState.diagResult,
                     diagRunning = uiState.diagRunning,
+                    pushResult = uiState.pushResult,
+                    pushRunning = uiState.pushRunning,
+                    hasPat = uiState.relayPat.isNotEmpty(),
                     onStart = { viewModel.startServer() },
                     onStop = { viewModel.stopServer() },
                     onDiagnostics = { viewModel.runDiagnostics() },
-                    onInstallCert = { viewModel.installCert() }
+                    onInstallCert = { viewModel.installCert() },
+                    onPushFeeds = { viewModel.pushAllFeeds() }
                 )
             }
 
@@ -128,6 +133,9 @@ fun ServerScreen(
                     },
                     onCopyNetworkHttps = {
                         copyToClipboard(context, feedWithUrl.networkHttpsUrl)
+                    },
+                    onCopyRelay = {
+                        copyToClipboard(context, feedWithUrl.relayUrl)
                     }
                 )
             }
@@ -144,10 +152,14 @@ private fun ServerStatusCard(
     certGenerated: Boolean,
     diagResult: String?,
     diagRunning: Boolean,
+    pushResult: String?,
+    pushRunning: Boolean,
+    hasPat: Boolean,
     onStart: () -> Unit,
     onStop: () -> Unit,
     onDiagnostics: () -> Unit,
     onInstallCert: () -> Unit,
+    onPushFeeds: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Card(
@@ -242,6 +254,37 @@ private fun ServerStatusCard(
                 )
             }
 
+            if (isRunning && hasPat) {
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedButton(
+                    onClick = onPushFeeds,
+                    enabled = !pushRunning,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.CloudUpload,
+                        contentDescription = null,
+                        modifier = Modifier.padding(end = 8.dp)
+                    )
+                    Text(if (pushRunning) "Pushing..." else "Push to GitHub relay")
+                }
+            }
+
+            if (pushResult != null) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Card(
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.tertiaryContainer
+                    )
+                ) {
+                    Text(
+                        text = pushResult,
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(8.dp)
+                    )
+                }
+            }
+
             if (diagResult != null) {
                 Spacer(modifier = Modifier.height(8.dp))
                 Card(
@@ -267,6 +310,7 @@ private fun FeedRssCard(
     onCopyNetwork: () -> Unit,
     onCopyLocalHttps: () -> Unit = {},
     onCopyNetworkHttps: () -> Unit = {},
+    onCopyRelay: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     Card(
@@ -302,6 +346,14 @@ private fun FeedRssCard(
                 url = feedWithUrl.networkUrl,
                 onCopy = onCopyNetwork
             )
+            if (feedWithUrl.relayUrl.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(4.dp))
+                UrlCopyRow(
+                    label = "GitHub relay (HTTPS)",
+                    url = feedWithUrl.relayUrl,
+                    onCopy = onCopyRelay
+                )
+            }
             if (feedWithUrl.localHttpsUrl.isNotEmpty()) {
                 Spacer(modifier = Modifier.height(4.dp))
                 UrlCopyRow(
@@ -317,7 +369,8 @@ private fun FeedRssCard(
                     url = feedWithUrl.networkHttpsUrl,
                     onCopy = onCopyNetworkHttps
                 )
-            }}
+            }
+        }
     }
 }
 

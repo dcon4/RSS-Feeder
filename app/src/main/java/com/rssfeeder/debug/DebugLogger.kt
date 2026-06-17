@@ -4,6 +4,7 @@ import android.content.Context
 import android.util.Log
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
@@ -14,7 +15,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-private val Context.dataStore by preferencesDataStore(name = "debug_settings")
+internal val Context.dataStore by preferencesDataStore(name = "debug_settings")
 
 object DebugLogger {
 
@@ -87,4 +88,19 @@ object DebugLogger {
     }
 
     private val VERBOSE_KEY = booleanPreferencesKey("verbose_logging_enabled")
+
+    private val GITHUB_PAT_KEY = stringPreferencesKey("github_pat")
+
+    fun getGithubPatFlow(): Flow<String> {
+        val ctx = context ?: return emptyFlow()
+        return ctx.dataStore.data.map { prefs ->
+            prefs[GITHUB_PAT_KEY] ?: ""
+        }
+    }
+
+    suspend fun persistGithubPat(context: Context, pat: String) {
+        context.dataStore.edit { prefs ->
+            prefs[GITHUB_PAT_KEY] = pat
+        }
+    }
 }
