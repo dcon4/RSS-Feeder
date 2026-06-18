@@ -74,8 +74,25 @@ object RssXmlBuilder {
         return writer.toString()
     }
 
+    private fun sanitizeForXml(text: String): String {
+        val valid = StringBuilder(text.length)
+        var i = 0
+        while (i < text.length) {
+            val cp = text.codePointAt(i)
+            if (cp == 0x09 || cp == 0x0A || cp == 0x0D ||
+                (cp in 0x20..0xD7FF) ||
+                (cp in 0xE000..0xFFFD) ||
+                (cp >= 0x10000 && cp <= 0x10FFFF)
+            ) {
+                valid.appendCodePoint(cp)
+            }
+            i += Character.charCount(cp)
+        }
+        return valid.toString()
+    }
+
     private fun escapeXml(text: String): String {
-        return text
+        return sanitizeForXml(text)
             .replace("&", "&amp;")
             .replace("<", "&lt;")
             .replace(">", "&gt;")
@@ -84,6 +101,6 @@ object RssXmlBuilder {
     }
 
     private fun toCdata(text: String): String {
-        return "<![CDATA[" + text.replace("]]>", "]]]]><![CDATA[>") + "]]>"
+        return "<![CDATA[" + sanitizeForXml(text).replace("]]>", "]]]]><![CDATA[>") + "]]>"
     }
 }
