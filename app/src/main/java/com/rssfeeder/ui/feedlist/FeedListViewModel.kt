@@ -194,8 +194,7 @@ class FeedListViewModel(application: Application) : AndroidViewModel(application
 
     private suspend fun refreshLocalFeed(feed: Feed) {
         val folderUri = Uri.parse(feed.url)
-        articleRepository.deleteArticlesForFeed(feed.id)
-        val articles = withContext(Dispatchers.IO) {
+        val scanned = withContext(Dispatchers.IO) {
             localFeedScanner.scanFolder(
                 context = getApplication(),
                 folderUri = folderUri,
@@ -203,7 +202,12 @@ class FeedListViewModel(application: Application) : AndroidViewModel(application
                 feedUrl = feed.url
             )
         }
-        articleRepository.insertArticles(articles)
+        val newArticles = scanned.filter { article ->
+            articleRepository.getArticleByLink(article.link) == null
+        }
+        if (newArticles.isNotEmpty()) {
+            articleRepository.insertArticles(newArticles)
+        }
         feedRepository.updateRefreshTime(feed.id, System.currentTimeMillis())
         feedRepository.updateError(feed.id, null)
     }

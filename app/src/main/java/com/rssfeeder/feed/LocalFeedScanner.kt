@@ -90,6 +90,15 @@ class LocalFeedScanner {
     }
 
     private fun extractTitle(content: String, displayName: String, mimeType: String): String {
+        val nameWithoutExt = displayName
+            .substringBeforeLast('.')
+            .trim()
+            .replace('_', ' ')
+
+        if (looksLikeRealWords(nameWithoutExt)) {
+            return nameWithoutExt.take(120)
+        }
+
         if (mimeType.equals("text/html", ignoreCase = true) ||
             displayName.endsWith(".html", ignoreCase = true) ||
             displayName.endsWith(".htm", ignoreCase = true)
@@ -109,6 +118,14 @@ class LocalFeedScanner {
         }
 
         return displayName
+    }
+
+    private fun looksLikeRealWords(name: String): Boolean {
+        if (name.isBlank()) return false
+        if (name.length < 3) return false
+        val alphaCount = name.count { it.isLetter() }
+        val digitCount = name.count { it.isDigit() }
+        return alphaCount > digitCount * 2 && alphaCount >= 3
     }
 
     private fun readTextFile(context: Context, folderUri: Uri, docId: String): String? {
