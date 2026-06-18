@@ -312,6 +312,7 @@ private fun FeedRssCard(
     onCopyLocalHttps: () -> Unit = {},
     onCopyNetworkHttps: () -> Unit = {},
     onCopyRelay: () -> Unit = {},
+    onDelete: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     Card(
@@ -370,6 +371,13 @@ private fun FeedRssCard(
                     url = feedWithUrl.networkHttpsUrl,
                     onCopy = onCopyNetworkHttps
                 )
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+            Button(
+                onClick = onDelete,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Delete feed")
             }
         }
     }
