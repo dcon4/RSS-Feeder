@@ -1,5 +1,7 @@
 package com.rssfeeder.ui.settings
 
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -12,10 +14,14 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.Button
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
@@ -25,6 +31,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -36,8 +43,22 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import com.rssfeeder.debug.DebugLogger
+import com.rssfeeder.server.RelayManager
 import com.rssfeeder.ui.components.RssFeederTopBar
 import kotlinx.coroutines.launch
+
+private val PUSH_INTERVALS = listOf(
+    0 to "Manual",
+    5 to "5 min",
+    10 to "10 min",
+    15 to "15 min",
+    30 to "30 min",
+    60 to "1 hour",
+    120 to "2 hours",
+    360 to "6 hours",
+    720 to "12 hours",
+    1440 to "24 hours"
+)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -50,8 +71,10 @@ fun SettingsScreen(
     val scope = rememberCoroutineScope()
     val verboseEnabled by DebugLogger.getVerboseEnabledFlow().collectAsState(initial = false)
     val savedPat by DebugLogger.getGithubPatFlow().collectAsState(initial = "")
+    val pushInterval by DebugLogger.getPushIntervalFlow().collectAsState(initial = 0)
     var patInput by rememberSaveable { mutableStateOf(savedPat) }
     var patVisible by rememberSaveable { mutableStateOf(false) }
+    var showIntervalMenu by remember { mutableStateOf(false) }
 
     DisposableEffect(Unit) {
         onDispose {
@@ -84,7 +107,8 @@ fun SettingsScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .padding(16.dp)
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -112,19 +136,18 @@ fun SettingsScreen(
                 )
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
             Text(
                 text = "GitHub Relay",
                 style = MaterialTheme.typography.titleMedium
             )
-            Spacer(modifier = Modifier.height(4.dp))
             Text(
                 text = "Personal Access Token (public_repo scope). Create at github.com/settings/tokens",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(4.dp))
             OutlinedTextField(
                 value = patInput,
                 onValueChange = { patInput = it },
@@ -142,7 +165,6 @@ fun SettingsScreen(
                 ),
                 modifier = Modifier.fillMaxWidth()
             )
-            Spacer(modifier = Modifier.height(4.dp))
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
@@ -163,6 +185,45 @@ fun SettingsScreen(
                     text = if (patVisible) "Hide" else "Show",
                     style = MaterialTheme.typography.bodySmall
                 )
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Text(
+                text = "Auto-push interval",
+                style = MaterialTheme.typography.titleMedium
+            )
+            Text(
+                text = "Automatically push feeds to GitHub relay on a schedule",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Box {
+                OutlinedButton(
+                    onClick = { showIntervalMenu = true }
+                ) {
+                    Text(
+                        PUSH_INTERVALS.firstOrNull { it.first == pushInterval }?.second
+                            ?: "Manual"
+                    )
+                }
+                DropdownMenu(
+                    expanded = showIntervalMenu,
+                    onDismissRequest = { showIntervalMenu = false }
+                ) {
+                    PUSH_INTERVALS.forEach { (minutes, label) ->
+                        DropdownMenuItem(
+                            text = { Text(label) },
+                            onClick = {
+                                scope.launch {
+                                    DebugLogger.persistPushInterval(context, minutes)
+                                }
+                                showIntervalMenu = false
+                            }
+                        )
+                    }
+                }
             }
         }
     }

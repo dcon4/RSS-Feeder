@@ -50,27 +50,33 @@ class LocalFeedScanner {
                     )
 
                     val content = when {
-                        mimeType.contains("text/plain") -> readTextFile(context, folderUri, docId)
-                        mimeType.contains("text/html") -> readHtmlFile(context, folderUri, docId)
-                        mimeType.contains("application/pdf") -> readPdfFile(context, folderUri, docId)
-                        displayName.endsWith(".txt") -> readTextFile(context, folderUri, docId)
-                        displayName.endsWith(".html") || displayName.endsWith(".htm") ->
+                        mimeType.equals("text/plain", ignoreCase = true) ||
+                        displayName.endsWith(".txt", ignoreCase = true) ->
+                            readTextFile(context, folderUri, docId)
+                        mimeType.equals("text/html", ignoreCase = true) ||
+                        displayName.endsWith(".html", ignoreCase = true) ||
+                        displayName.endsWith(".htm", ignoreCase = true) ->
                             readHtmlFile(context, folderUri, docId)
-                        displayName.endsWith(".pdf") -> readPdfFile(context, folderUri, docId)
+                        mimeType.contains("pdf", ignoreCase = true) ||
+                        displayName.endsWith(".pdf", ignoreCase = true) ->
+                            readPdfFile(context, folderUri, docId)
+                        displayName.endsWith(".md", ignoreCase = true) ->
+                            readTextFile(context, folderUri, docId)
                         else -> null
                     }
 
                     if (content != null) {
+                        val title = extractTitle(content, displayName, mimeType)
                         articles.add(
                             Article(
                                 feedId = feedId,
-                                title = displayName,
+                                title = title,
                                 link = "$feedUrl/$docId",
                                 publishedDate = if (lastModified > 0) lastModified else System.currentTimeMillis(),
                                 content = content
                             )
                         )
-                        DebugLogger.verbose("LocalFeedScanner", "Scanned: $displayName")
+                        DebugLogger.verbose("LocalFeedScanner", "Scanned: $displayName -> $title")
                     }
                 }
             }
@@ -81,6 +87,28 @@ class LocalFeedScanner {
         }
 
         return articles
+    }
+
+    private fun extractTitle(content: String, displayName: String, mimeType: String): String {
+        if (mimeType.equals("text/html", ignoreCase = true) ||
+            displayName.endsWith(".html", ignoreCase = true) ||
+            displayName.endsWith(".htm", ignoreCase = true)
+        ) {
+            try {
+                val doc = Jsoup.parse(content)
+                val title = doc.title().trim()
+                if (title.isNotEmpty()) return title.take(120)
+            } catch (_: Exception) {}
+        }
+
+        val trimmed = content.trim()
+        if (trimmed.isNotEmpty()) {
+            val firstLine = trimmed.lines().first().trim()
+            if (firstLine.length <= 80) return firstLine
+            return firstLine.take(77) + "..."
+        }
+
+        return displayName
     }
 
     private fun readTextFile(context: Context, folderUri: Uri, docId: String): String? {

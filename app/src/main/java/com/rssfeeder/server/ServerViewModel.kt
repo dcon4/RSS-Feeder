@@ -8,9 +8,11 @@ import com.rssfeeder.data.model.Feed
 import com.rssfeeder.data.repository.FeedRepository
 import com.rssfeeder.debug.DebugLogger
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -48,14 +50,18 @@ class ServerViewModel(application: Application) : AndroidViewModel(application) 
     private val _uiState = MutableStateFlow(ServerUiState())
     val uiState: StateFlow<ServerUiState> = _uiState.asStateFlow()
 
+    private var autoPushJob: kotlinx.coroutines.Job? = null
+
     init {
         viewModelScope.launch {
             DebugLogger.getGithubPatFlow().collect { pat ->
                 _uiState.value = _uiState.value.copy(relayPat = pat)
+                restartAutoPush()
             }
         }
         viewModelScope.launch {
             ServerService.serverState.collect { serviceState ->
+                restartAutoPush()
                 val feeds = feedRepository.getFeedList()
                 val port = serviceState.port
                 val httpsPort = ServerService.DEFAULT_HTTPS_PORT
@@ -113,6 +119,30 @@ class ServerViewModel(application: Application) : AndroidViewModel(application) 
 
     fun installCert() {
         ServerService.installCert(app)
+    }
+
+    private suspend fun getPushInterval(): Int {
+        return DebugLogger.getPushIntervalFlow().first()
+    }
+
+    private fun restartAutoPush() {
+        autoPushJob?.cancel()
+        autoPushJob = null
+        val state = _uiState.value
+        if (state.isRunning && state.relayPat.isNotEmpty()) {
+            viewModelScope.launch {
+                val interval = getPushInterval()
+                if (interval > 0) {
+                    autoPushJob = viewModelScope.launch {
+                        while (true) {
+                            delay(interval * 60_000L)
+                            if (!_uiState.value.isRunning) break
+                            pushAllFeeds()
+                        }
+                    }
+                }
+            }
+        }
     }
 
     fun deleteFeed(feedId: Long) {

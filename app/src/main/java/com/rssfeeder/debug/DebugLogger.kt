@@ -4,6 +4,7 @@ import android.content.Context
 import android.util.Log
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
@@ -101,6 +102,21 @@ object DebugLogger {
     suspend fun persistGithubPat(context: Context, pat: String) {
         context.dataStore.edit { prefs ->
             prefs[GITHUB_PAT_KEY] = pat
+        }
+    }
+
+    private val PUSH_INTERVAL_KEY = intPreferencesKey("push_interval_minutes")
+
+    fun getPushIntervalFlow(): Flow<Int> {
+        val ctx = context ?: return emptyFlow()
+        return ctx.dataStore.data.map { prefs ->
+            prefs[PUSH_INTERVAL_KEY] ?: 0
+        }
+    }
+
+    suspend fun persistPushInterval(context: Context, minutes: Int) {
+        context.dataStore.edit { prefs ->
+            prefs[PUSH_INTERVAL_KEY] = minutes
         }
     }
 }
