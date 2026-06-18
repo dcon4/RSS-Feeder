@@ -115,6 +115,13 @@ class ServerViewModel(application: Application) : AndroidViewModel(application) 
         ServerService.installCert(app)
     }
 
+    fun deleteFeed(feedId: Long) {
+        viewModelScope.launch {
+            feedRepository.deleteFeed(feedId)
+            refreshFeeds()
+        }
+    }
+
     fun pushAllFeeds() {
         viewModelScope.launch {
             val pat = _uiState.value.relayPat
@@ -134,10 +141,10 @@ class ServerViewModel(application: Application) : AndroidViewModel(application) 
                 return@launch
             }
             val port = _uiState.value.port
-            val errors = mutableListOf<String>()
+            val results = mutableListOf<String>()
             var pushed = 0
-            for (feed in feeds) {
-                val result = withContext(Dispatchers.IO) {
+            try {
+                for (feed in feeds) {
                     try {
                         val rssXml = withContext(Dispatchers.IO) {
                             val url = java.net.URL("http://127.0.0.1:$port/feed/${feed.id}/rss.xml")
@@ -152,23 +159,26 @@ class ServerViewModel(application: Application) : AndroidViewModel(application) 
                             }
                         }
                         if (rssXml != null) {
-                            val err = RelayManager.pushFeed(pat, feed.id, rssXml)
-                            if (err != null) errors.add("Feed ${feed.id}: $err")
-                            else pushed++
+                            val err = withContext(Dispatchers.IO) {
+                                RelayManager.pushFeed(pat, feed.id, rssXml)
+                            }
+                            if (err != null) {
+                                results.add("Feed ${feed.id} (${feed.title}): FAILED - $err")
+                            } else {
+                                results.add("Feed ${feed.id} (${feed.title}): pushed OK")
+                                pushed++
+                            }
                         } else {
-                            errors.add("Feed ${feed.id}: could not fetch RSS from local server")
+                            results.add("Feed ${feed.id} (${feed.title}): FAILED - could not fetch RSS from local server")
                         }
                     } catch (e: Exception) {
-                        errors.add("Feed ${feed.id}: ${e.message}")
+                        results.add("Feed ${feed.id} (${feed.title}): FAILED - ${e.message}")
                     }
                 }
+            } catch (e: Exception) {
+                results.add("Push stopped early: ${e.message}")
             }
-            val msg = buildString {
-                append("Pushed $pushed of ${feeds.size} feeds.")
-                if (errors.isNotEmpty()) {
-                    append(" Errors: ${errors.joinToString("; ")}")
-                }
-            }
+            val msg = results.joinToString("\n")
             _uiState.value = _uiState.value.copy(
                 pushResult = msg,
                 pushRunning = false
