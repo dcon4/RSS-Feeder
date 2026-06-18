@@ -2,6 +2,7 @@ package com.rssfeeder
 
 import android.content.Intent
 import android.net.Uri
+import android.provider.DocumentsContract
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -110,7 +111,9 @@ class MainActivity : ComponentActivity() {
                     },
                     onAddLocalFolder = {
                         pendingFolderCallback = { uri ->
-                            val title = uri.lastPathSegment ?: "Local Folder"
+                            val docId = DocumentsContract.getTreeDocumentId(uri)
+                            val folderName = docId.substringAfterLast('/')
+                            val title = java.net.URLDecoder.decode(folderName, "UTF-8")
                             feedListViewModel.addLocalFolderFeed(title, uri)
                             serverViewModel.refreshFeeds()
                         }
