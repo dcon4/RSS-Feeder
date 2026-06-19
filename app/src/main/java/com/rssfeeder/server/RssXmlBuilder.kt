@@ -11,9 +11,9 @@ object RssXmlBuilder {
 
     private val rfc822Format = SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss Z", Locale.US)
 
-    fun buildFeedXml(feed: Feed, articles: List<Article>, baseUrl: String): String {
+    fun buildFeedXml(feed: Feed, articles: List<Article>, baseUrl: String, relayUrl: String? = null): String {
         val writer = StringWriter()
-        val feedUrl = "$baseUrl/feed/${feed.id}/rss.xml"
+        val feedUrl = relayUrl ?: "$baseUrl/feed/${feed.id}/rss.xml"
         val channelLink = if (feed.type == com.rssfeeder.data.model.FeedType.REMOTE) feed.url else feedUrl
 
         writer.write("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n")

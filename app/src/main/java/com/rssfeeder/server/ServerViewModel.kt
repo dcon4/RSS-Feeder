@@ -5,6 +5,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.rssfeeder.data.db.AppDatabase
 import com.rssfeeder.data.model.Feed
+import com.rssfeeder.data.repository.ArticleRepository
 import com.rssfeeder.data.repository.FeedRepository
 import com.rssfeeder.debug.DebugLogger
 import kotlinx.coroutines.Dispatchers
@@ -42,10 +43,9 @@ data class FeedWithUrl(
 class ServerViewModel(application: Application) : AndroidViewModel(application) {
 
     private val app = application
-    private val feedRepository = FeedRepository(
-        AppDatabase.getInstance(application).feedDao(),
-        AppDatabase.getInstance(application).articleDao()
-    )
+    private val db = AppDatabase.getInstance(application)
+    private val feedRepository = FeedRepository(db.feedDao(), db.articleDao())
+    private val articleRepository = ArticleRepository(db.articleDao())
 
     private val _uiState = MutableStateFlow(ServerUiState())
     val uiState: StateFlow<ServerUiState> = _uiState.asStateFlow()
@@ -170,36 +170,23 @@ class ServerViewModel(application: Application) : AndroidViewModel(application) 
                 )
                 return@launch
             }
-            val port = _uiState.value.port
             val results = mutableListOf<String>()
             var pushed = 0
             try {
                 for (feed in feeds) {
                     try {
-                        val rssXml = withContext(Dispatchers.IO) {
-                            val url = java.net.URL("http://127.0.0.1:$port/feed/${feed.id}/rss.xml")
-                            val conn = url.openConnection() as java.net.HttpURLConnection
-                            conn.connectTimeout = 10000
-                            conn.readTimeout = 10000
-                            val code = conn.responseCode
-                            if (code in 200..299) {
-                                conn.inputStream.bufferedReader().use { it.readText() }
-                            } else {
-                                null
-                            }
+                        val articles = articleRepository.getArticlesForFeedList(feed.id)
+                        val relayUrl = RelayManager.getRelayUrl(feed.id)
+                        val rssXml = RssXmlBuilder.buildFeedXml(feed, articles, "", relayUrl)
+
+                        val err = withContext(Dispatchers.IO) {
+                            RelayManager.pushFeed(pat, feed.id, rssXml)
                         }
-                        if (rssXml != null) {
-                            val err = withContext(Dispatchers.IO) {
-                                RelayManager.pushFeed(pat, feed.id, rssXml)
-                            }
-                            if (err != null) {
-                                results.add("Feed ${feed.id} (${feed.title}): FAILED - $err")
-                            } else {
-                                results.add("Feed ${feed.id} (${feed.title}): pushed OK")
-                                pushed++
-                            }
+                        if (err != null) {
+                            results.add("Feed ${feed.id} (${feed.title}): FAILED - $err")
                         } else {
-                            results.add("Feed ${feed.id} (${feed.title}): FAILED - could not fetch RSS from local server")
+                            results.add("Feed ${feed.id} (${feed.title}): pushed OK (${articles.size} articles)")
+                            pushed++
                         }
                     } catch (e: Exception) {
                         results.add("Feed ${feed.id} (${feed.title}): FAILED - ${e.message}")
