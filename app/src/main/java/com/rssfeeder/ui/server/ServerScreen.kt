@@ -62,6 +62,8 @@ fun ServerScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
+    val isDark = isSystemInDarkTheme()
+    val cardColorPalette = if (isDark) MutedCardColorsDark else MutedCardColors
 
     Scaffold(
         topBar = {
@@ -124,9 +126,6 @@ fun ServerScreen(
                     )
                 }
             }
-
-            val isDark = isSystemInDarkTheme()
-            val cardColorPalette = if (isDark) MutedCardColorsDark else MutedCardColors
 
             itemsIndexed(
                 items = uiState.feeds,
