@@ -55,16 +55,10 @@ class RssFetcher {
                                 currentAuthor = null
                                 currentDate = null
                                 currentSummary = null
-                                tagContent = StringBuilder()
                             }
-                            "title", "link", "author", "name", "pubdate",
-                            "published", "updated", "summary", "description",
-                            "content" -> {
-                                tagContent = StringBuilder()
-                                if (tagName == "link") {
-                                    currentLink = parser.getAttributeValue(null, "href")
-                                }
-                            }
+                        }
+                        if (inItem) {
+                            tagContent = StringBuilder()
                         }
                     }
                     XmlPullParser.TEXT -> {
@@ -96,8 +90,7 @@ class RssFetcher {
                                 }
                                 "title" -> if (currentTitle == null) currentTitle = text
                                 "link" -> if (currentLink == null) currentLink = text
-                                "author" -> if (currentAuthor == null) currentAuthor = text
-                                "name" -> if (currentAuthor == null) currentAuthor = text
+                                "author", "name", "creator" -> if (currentAuthor == null) currentAuthor = text
                                 "pubdate", "published", "updated" ->
                                     if (currentDate == null) currentDate = text
                                 "description", "summary" ->

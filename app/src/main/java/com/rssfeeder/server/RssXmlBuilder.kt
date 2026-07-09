@@ -14,7 +14,11 @@ object RssXmlBuilder {
     fun buildFeedXml(feed: Feed, articles: List<Article>, baseUrl: String, relayUrl: String? = null): String {
         val writer = StringWriter()
         val feedUrl = relayUrl ?: "$baseUrl/feed/${feed.id}/rss.xml"
-        val channelLink = if (feed.type == com.rssfeeder.data.model.FeedType.REMOTE) feed.url else feedUrl
+        val channelLink = when {
+            feed.type == com.rssfeeder.data.model.FeedType.REMOTE -> feed.url
+            relayUrl != null -> relayUrl.substringBeforeLast('/').substringBeforeLast('/') + "/"
+            else -> feedUrl
+        }
 
         writer.write("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n")
         writer.write("<rss version=\"2.0\"\n")
