@@ -147,6 +147,12 @@ class ServerViewModel(application: Application) : AndroidViewModel(application) 
 
     fun deleteFeed(feedId: Long) {
         viewModelScope.launch {
+            val pat = _uiState.value.relayPat
+            if (pat.isNotEmpty()) {
+                withContext(Dispatchers.IO) {
+                    RelayManager.deleteFeedRelay(pat, feedId)
+                }
+            }
             feedRepository.deleteFeed(feedId)
             refreshFeeds()
         }

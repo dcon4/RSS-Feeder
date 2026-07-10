@@ -7,6 +7,11 @@ import java.net.URL
 import java.security.MessageDigest
 import java.util.Base64
 
+data class RelayDeleteResult(
+    val success: Boolean,
+    val error: String? = null
+)
+
 object RelayManager {
 
     private const val RELAY_OWNER = "dcon4"
@@ -72,6 +77,50 @@ object RelayManager {
             val err = "Push error: ${e.message}"
             DebugLogger.log("RelayManager", err)
             err
+        }
+    }
+
+    fun deleteFeedRelay(pat: String, feedId: Long): RelayDeleteResult {
+        val token = feedToken(feedId)
+        return try {
+            val path = "feeds/$token.xml"
+            val existingSha = getExistingSha(pat, path) ?: return RelayDeleteResult(
+                success = true, error = "File not found on relay"
+            )
+
+            val url = URL("$API_BASE/repos/$RELAY_OWNER/$RELAY_REPO/contents/$path")
+            val conn = url.openConnection() as HttpURLConnection
+            conn.requestMethod = "DELETE"
+            conn.setRequestProperty("Authorization", "Bearer $pat")
+            conn.setRequestProperty("Accept", "application/vnd.github.v3+json")
+            conn.setRequestProperty("Content-Type", "application/json")
+            conn.doOutput = true
+            conn.connectTimeout = 15000
+            conn.readTimeout = 15000
+
+            val body = "{\"message\":\"Delete feed $feedId relay\",\"branch\":\"$RELAY_BRANCH\",\"sha\":\"$existingSha\"}"
+            OutputStreamWriter(conn.outputStream).use { it.write(body) }
+
+            val code = conn.responseCode
+            val responseBody = if (code in 200..299) {
+                conn.inputStream.bufferedReader().readText()
+            } else {
+                conn.errorStream?.bufferedReader()?.readText() ?: "No body"
+            }
+            conn.disconnect()
+
+            if (code in 200..299) {
+                DebugLogger.log("RelayManager", "Feed $feedId relay deleted")
+                RelayDeleteResult(success = true)
+            } else {
+                val err = "Delete relay failed: HTTP $code $responseBody"
+                DebugLogger.log("RelayManager", err)
+                RelayDeleteResult(success = false, error = err)
+            }
+        } catch (e: Exception) {
+            val err = "Delete relay error: ${e.message}"
+            DebugLogger.log("RelayManager", err)
+            RelayDeleteResult(success = false, error = err)
         }
     }
 
