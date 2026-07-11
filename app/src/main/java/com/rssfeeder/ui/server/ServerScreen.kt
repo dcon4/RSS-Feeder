@@ -150,7 +150,7 @@ fun ServerScreen(
                     onCopyRelay = {
                         copyToClipboard(context, feedWithUrl.relayUrl)
                     },
-                    onDelete = { viewModel.deleteFeed(feedWithUrl.feed) }
+                    onDelete = { viewModel.deleteFeed(feedWithUrl.feed.id) }
                 )
             }
         }

@@ -93,7 +93,7 @@ class ServerViewModel(application: Application) : AndroidViewModel(application) 
                             networkUrl = "$networkBase$suffix",
                             localHttpsUrl = "$localHttpsBase$suffix",
                             networkHttpsUrl = "$networkHttpsBase$suffix",
-                            relayUrl = RelayManager.getRelayUrl(feed)
+                            relayUrl = RelayManager.getRelayUrl(feed.id)
                         )
                     }
                 )
@@ -145,15 +145,15 @@ class ServerViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
-    fun deleteFeed(feed: Feed) {
+    fun deleteFeed(feedId: Long) {
         viewModelScope.launch {
             val pat = _uiState.value.relayPat
             if (pat.isNotEmpty()) {
                 withContext(Dispatchers.IO) {
-                    RelayManager.deleteFeedRelay(pat, feed)
+                    RelayManager.deleteFeedRelay(pat, feedId)
                 }
             }
-            feedRepository.deleteFeed(feed.id)
+            feedRepository.deleteFeed(feedId)
             refreshFeeds()
         }
     }
@@ -182,11 +182,11 @@ class ServerViewModel(application: Application) : AndroidViewModel(application) 
                 for (feed in feeds) {
                     try {
                         val articles = articleRepository.getArticlesForFeedList(feed.id)
-                        val relayUrl = RelayManager.getRelayUrl(feed)
+                        val relayUrl = RelayManager.getRelayUrl(feed.id)
                         val rssXml = RssXmlBuilder.buildFeedXml(feed, articles, "", relayUrl)
 
                         val err = withContext(Dispatchers.IO) {
-                            RelayManager.pushFeed(pat, feed, rssXml)
+                            RelayManager.pushFeed(pat, feed.id, rssXml)
                         }
                         if (err != null) {
                             results.add("Feed ${feed.id} (${feed.title}): FAILED - $err")
@@ -228,7 +228,7 @@ class ServerViewModel(application: Application) : AndroidViewModel(application) 
                         networkUrl = "$networkBase$suffix",
                         localHttpsUrl = "$localHttpsBase$suffix",
                         networkHttpsUrl = "$networkHttpsBase$suffix",
-                        relayUrl = RelayManager.getRelayUrl(feed)
+                        relayUrl = RelayManager.getRelayUrl(feed.id)
                     )
                 }
             )
