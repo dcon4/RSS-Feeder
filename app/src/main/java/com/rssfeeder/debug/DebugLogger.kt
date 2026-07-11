@@ -22,8 +22,8 @@ object DebugLogger {
 
     private const val TAG = "RSS-Feeder"
     private const val LOG_DIR = "logs"
-    private const val LOG_FILE = "rss_feeder_log.txt"
 
+    private val fileNameFormat = SimpleDateFormat("yyyy-MM-dd-HH-mm", Locale.US)
     private val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS", Locale.US)
 
     var verboseEnabled: Boolean = false
@@ -34,9 +34,14 @@ object DebugLogger {
 
     fun initialize(appContext: Context) {
         context = appContext
-        logFile = File(appContext.cacheDir, "$LOG_DIR/$LOG_FILE")
+        val timestamp = fileNameFormat.format(Date())
+        logFile = File(appContext.cacheDir, "$LOG_DIR/rssfeeder-debug.log.$timestamp.txt")
         logFile?.parentFile?.mkdirs()
         Log.i(TAG, "DebugLogger initialized, log file: ${logFile?.absolutePath}")
+        val buildNumber = try {
+            com.rssfeeder.BuildConfig.VERSION_CODE.toString()
+        } catch (e: Exception) { "unknown" }
+        log(TAG, "Logger initialized (build $buildNumber)")
     }
 
     fun setVerboseEnabled(enabled: Boolean) {
@@ -52,7 +57,7 @@ object DebugLogger {
     fun verbose(tag: String, message: String) {
         if (!verboseEnabled) return
         Log.v(tag, message)
-        writeToFile("[V][$tag] $message")
+        writeToFile("[VERBOSE][$tag] $message")
     }
 
     private fun writeToFile(line: String) {
