@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>Test Feed</title>
+    <link>https://dcon4.github.io/RSS-Feeder/</link>
+    <description>Test feed for debugging</description>
+    <item>
+      <title>Test Article</title>
+      <link>https://example.com/test</link>
+      <guid>test-001</guid>
+      <description>This is a test article.</description>
+    </item>
+  </channel>
+</rss>
