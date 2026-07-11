@@ -2,6 +2,7 @@ package com.rssfeeder.debug
 
 import android.content.Context
 import android.util.Log
+import com.rssfeeder.BuildConfig
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
@@ -38,10 +39,7 @@ object DebugLogger {
         logFile = File(appContext.cacheDir, "$LOG_DIR/rssfeeder-debug.log.$timestamp.txt")
         logFile?.parentFile?.mkdirs()
         Log.i(TAG, "DebugLogger initialized, log file: ${logFile?.absolutePath}")
-        val buildNumber = try {
-            com.rssfeeder.BuildConfig.VERSION_CODE.toString()
-        } catch (e: Exception) { "unknown" }
-        log(TAG, "Logger initialized (build $buildNumber)")
+        log(TAG, "Logger initialized (build ${BuildConfig.VERSION_CODE})")
     }
 
     fun setVerboseEnabled(enabled: Boolean) {
