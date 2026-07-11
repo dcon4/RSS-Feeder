@@ -40,7 +40,7 @@ RssFetcher via Rome library). No smart filename logic applies.
 
 - RSS XML pushed to `gh-pages` branch of `dcon4/RSS-Feeder` via GitHub Contents API
 - Served at `https://dcon4.github.io/RSS-Feeder/feeds/{sha256hex16}.xml`
-- Token = first 16 hex chars of SHA-256("rss_feeder_relay_{feedId}")
+- Token = first 16 hex chars of SHA-256("rss_feeder_relay_{feedUrl}") -- uses feed URL, not database ID, so gReader doesn't see stale feeds as duplicates
 - `RelayManager.kt`: pushFeed(), getRelayUrl()
 - Requires GitHub PAT with `public_repo` scope, stored in DataStore
 
@@ -90,5 +90,5 @@ GitHub Actions at `.github/workflows/build.yml`:
 - No emoji in code, comments, commit messages, or UI.
 - Screen reader accessible formatting: headings for sections, bullet lists not
   ASCII dashes, tables for tabular data, no ASCII art.
-- GitHub operations use `gh` CLI at `/tmp/gh_2.94.0_linux_amd64/bin/gh`.
+- GitHub operations use `gh` CLI at `/usr/bin/gh`.
 - Never hardcode secrets or print them in output.
