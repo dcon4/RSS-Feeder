@@ -42,7 +42,6 @@ object RssXmlBuilder {
             writer.write("      <link>${escapeXml(article.link)}</link>\n")
             writer.write("      <guid isPermaLink=\"false\">${escapeXml(guid)}</guid>\n")
             if (article.author != null) {
-                writer.write("      <author>${escapeXml(article.author)}</author>\n")
                 writer.write("      <dc:creator>${escapeXml(article.author)}</dc:creator>\n")
             }
             if (article.publishedDate > 0) {
