@@ -15,6 +15,7 @@ object RssXmlBuilder {
         val writer = StringWriter()
         val feedUrl = relayUrl ?: "$baseUrl/feed/${feed.id}/rss.xml"
         val channelLink = when {
+            feed.type == com.rssfeeder.data.model.FeedType.REMOTE -> feed.url
             relayUrl != null -> relayUrl.substringBeforeLast('/').substringBeforeLast('/') + "/"
             else -> feedUrl
         }
