@@ -1,5 +1,6 @@
 package com.rssfeeder.server
 
+import com.rssfeeder.data.model.Feed
 import com.rssfeeder.debug.DebugLogger
 import java.io.OutputStreamWriter
 import java.net.HttpURLConnection
@@ -20,18 +21,18 @@ object RelayManager {
     private const val API_BASE = "https://api.github.com"
     private const val PAGES_BASE = "https://raw.githubusercontent.com"
 
-    fun feedToken(feedId: Long): String {
+    fun feedToken(key: String): String {
         val digest = MessageDigest.getInstance("SHA-256")
-            .digest("rss_feeder_relay_$feedId".toByteArray())
+            .digest("rss_feeder_relay_$key".toByteArray())
         return digest.take(8).joinToString("") { "%02x".format(it) }
     }
 
-    fun getRelayUrl(feedId: Long): String {
-        return "$PAGES_BASE/$RELAY_OWNER/$RELAY_REPO/$RELAY_BRANCH/feeds/${feedToken(feedId)}.xml"
+    fun getRelayUrl(feed: Feed): String {
+        return "$PAGES_BASE/$RELAY_OWNER/$RELAY_REPO/$RELAY_BRANCH/feeds/${feedToken(feed.url)}.xml"
     }
 
-    fun pushFeed(pat: String, feedId: Long, rssXml: String): String? {
-        val token = feedToken(feedId)
+    fun pushFeed(pat: String, feed: Feed, rssXml: String): String? {
+        val token = feedToken(feed.url)
         return try {
             val path = "feeds/$token.xml"
             val existingSha = getExistingSha(pat, path)
@@ -48,7 +49,7 @@ object RelayManager {
 
             val encoded = Base64.getEncoder().encodeToString(rssXml.toByteArray(Charsets.UTF_8))
             val body = buildString {
-                append("{\"message\":\"Update feed $feedId\",\"branch\":\"$RELAY_BRANCH\",\"content\":\"$encoded\"")
+                append("{\"message\":\"Update feed ${feed.id}\",\"branch\":\"$RELAY_BRANCH\",\"content\":\"$encoded\"")
                 if (existingSha != null) {
                     append(",\"sha\":\"$existingSha\"")
                 }
@@ -66,7 +67,7 @@ object RelayManager {
             conn.disconnect()
 
             if (code in 200..299) {
-                DebugLogger.log("RelayManager", "Feed $feedId pushed to relay")
+                DebugLogger.log("RelayManager", "Feed ${feed.id} pushed to relay")
                 null
             } else {
                 val err = "Push failed: HTTP $code $responseBody"
@@ -80,8 +81,8 @@ object RelayManager {
         }
     }
 
-    fun deleteFeedRelay(pat: String, feedId: Long): RelayDeleteResult {
-        val token = feedToken(feedId)
+    fun deleteFeedRelay(pat: String, feed: Feed): RelayDeleteResult {
+        val token = feedToken(feed.url)
         return try {
             val path = "feeds/$token.xml"
             val existingSha = getExistingSha(pat, path) ?: return RelayDeleteResult(
@@ -98,7 +99,7 @@ object RelayManager {
             conn.connectTimeout = 15000
             conn.readTimeout = 15000
 
-            val body = "{\"message\":\"Delete feed $feedId relay\",\"branch\":\"$RELAY_BRANCH\",\"sha\":\"$existingSha\"}"
+            val body = "{\"message\":\"Delete feed ${feed.id} relay\",\"branch\":\"$RELAY_BRANCH\",\"sha\":\"$existingSha\"}"
             OutputStreamWriter(conn.outputStream).use { it.write(body) }
 
             val code = conn.responseCode
@@ -110,7 +111,7 @@ object RelayManager {
             conn.disconnect()
 
             if (code in 200..299) {
-                DebugLogger.log("RelayManager", "Feed $feedId relay deleted")
+                DebugLogger.log("RelayManager", "Feed ${feed.id} relay deleted")
                 RelayDeleteResult(success = true)
             } else {
                 val err = "Delete relay failed: HTTP $code $responseBody"

@@ -40,7 +40,7 @@ RssFetcher via Rome library). No smart filename logic applies.
 
 - RSS XML pushed to `gh-pages` branch of `dcon4/RSS-Feeder` via GitHub Contents API
 - Served at `https://raw.githubusercontent.com/dcon4/RSS-Feeder/gh-pages/feeds/{sha256hex16}.xml`
-- Token = first 16 hex chars of SHA-256("rss_feeder_relay_{feedId}")
+- Token = first 16 hex chars of SHA-256("rss_feeder_relay_{feedUrl}") -- uses feed URL so each feed gets a unique URL that readers have never cached
 - `RelayManager.kt`: pushFeed(), getRelayUrl()
 - Requires GitHub PAT with `public_repo` scope, stored in DataStore
 
