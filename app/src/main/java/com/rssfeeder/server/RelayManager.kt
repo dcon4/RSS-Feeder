@@ -16,7 +16,7 @@ data class RelayDeleteResult(
 object RelayManager {
 
     private const val RELAY_OWNER = "dcon4"
-    private const val RELAY_REPO = "RSS-Feeder"
+    private const val RELAY_REPO = "rss-feeder-relay"
     private const val RELAY_BRANCH = "gh-pages"
     private const val API_BASE = "https://api.github.com"
     private const val PAGES_BASE = "https://raw.githubusercontent.com"
