@@ -18,7 +18,7 @@ object RelayManager {
     private const val RELAY_REPO = "RSS-Feeder"
     private const val RELAY_BRANCH = "gh-pages"
     private const val API_BASE = "https://api.github.com"
-    private const val PAGES_BASE = "https://dcon4.github.io"
+    private const val PAGES_BASE = "https://raw.githubusercontent.com"
 
     fun feedToken(feedId: Long): String {
         val digest = MessageDigest.getInstance("SHA-256")
@@ -27,7 +27,7 @@ object RelayManager {
     }
 
     fun getRelayUrl(feedId: Long): String {
-        return "$PAGES_BASE/$RELAY_REPO/feeds/${feedToken(feedId)}.xml"
+        return "$PAGES_BASE/$RELAY_OWNER/$RELAY_REPO/$RELAY_BRANCH/feeds/${feedToken(feedId)}.xml"
     }
 
     fun pushFeed(pat: String, feedId: Long, rssXml: String): String? {
