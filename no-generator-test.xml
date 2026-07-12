@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0"
+  xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <channel>
+    <title>No Generator Test</title>
+    <link>https://example.com/unique-path-abc-123</link>
+    <description>This is a unique description that has never appeared in any RSS-Feeder feed. The generator tag has been removed entirely.</description>
+    <language>en</language>
+    <ttl>60</ttl>
+    <lastBuildDate>Sun, 12 Jul 2026 15:00:00 -0500</lastBuildDate>
+    <item>
+      <title>Test Article No Generator</title>
+      <link>https://example.com/unique-path-abc-123/item1</link>
+      <guid>unique-guid-no-generator-001</guid>
+      <pubDate>Sun, 12 Jul 2026 15:00:00 -0500</pubDate>
+      <description>Simple description without CDATA for uniqueness.</description>
+    </item>
+  </channel>
+</rss>
