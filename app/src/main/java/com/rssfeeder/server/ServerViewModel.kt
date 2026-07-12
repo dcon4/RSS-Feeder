@@ -228,7 +228,7 @@ class ServerViewModel(application: Application) : AndroidViewModel(application) 
                         networkUrl = "$networkBase$suffix",
                         localHttpsUrl = "$localHttpsBase$suffix",
                         networkHttpsUrl = "$networkHttpsBase$suffix",
-                        relayUrl = RelayManager.getRelayUrl(feed.id)
+                        relayUrl = RelayManager.getRelayUrl(feed)
                     )
                 }
             )
