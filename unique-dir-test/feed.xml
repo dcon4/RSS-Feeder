@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>Unique Directory Test</title>
+    <link>https://example.com/unique-dir-test</link>
+    <description>Testing if unique directory avoids Anthropic cache.</description>
+    <item>
+      <title>Test Article</title>
+      <link>https://example.com/unique-dir-test/item1</link>
+      <guid>unique-dir-test-001</guid>
+      <pubDate>Sun, 12 Jul 2026 16:00:00 -0500</pubDate>
+      <description>Testing unique directory path.</description>
+    </item>
+  </channel>
+</rss>
