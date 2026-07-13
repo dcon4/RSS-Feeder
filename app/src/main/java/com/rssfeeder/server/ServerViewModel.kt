@@ -3,11 +3,16 @@ package com.rssfeeder.server
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import android.net.Uri
 import com.rssfeeder.data.db.AppDatabase
 import com.rssfeeder.data.model.Feed
+import com.rssfeeder.data.model.FeedType
 import com.rssfeeder.data.repository.ArticleRepository
 import com.rssfeeder.data.repository.FeedRepository
 import com.rssfeeder.debug.DebugLogger
+import com.rssfeeder.feed.ArticleExporter
+import com.rssfeeder.feed.FullTextExtractor
+import com.rssfeeder.feed.RssFetcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -155,6 +160,78 @@ class ServerViewModel(application: Application) : AndroidViewModel(application) 
             }
             feedRepository.deleteFeed(feed.id)
             refreshFeeds()
+        }
+    }
+
+    fun refreshFeed(feedId: Long) {
+        viewModelScope.launch {
+            val feed = feedRepository.getFeedById(feedId) ?: return@launch
+            try {
+                if (feed.type == FeedType.REMOTE) {
+                    val rssFetcher = RssFetcher()
+                    val fullTextExtractor = FullTextExtractor()
+                    val result = withContext(Dispatchers.IO) {
+                        rssFetcher.fetchFeed(feed.url)
+                    }
+                    var newCount = 0
+                    for (article in result.articles) {
+                        val existing = articleRepository.getArticleByLink(article.link)
+                        if (existing == null) {
+                            val fullContent = try {
+                                fullTextExtractor.extractFullText(article.link)
+                            } catch (e: Exception) { null }
+                            articleRepository.insertArticle(
+                                article.copy(
+                                    feedId = feed.id,
+                                    content = fullContent ?: article.summary
+                                )
+                            )
+                            newCount++
+                        }
+                    }
+                    feedRepository.updateRefreshTime(feed.id, System.currentTimeMillis())
+                    feedRepository.updateError(feed.id, null)
+                    DebugLogger.log("ServerVM", "Refreshed '${feed.title}': $newCount new articles")
+                }
+                if (feed.autoDownload) {
+                    exportFeed(feed)
+                }
+            } catch (e: Exception) {
+                feedRepository.updateError(feed.id, e.message ?: "Unknown error")
+                DebugLogger.log("ServerVM", "Refresh failed for '${feed.title}': ${e.message}")
+            }
+            refreshFeeds()
+        }
+    }
+
+    fun toggleAutoDownload(feed: Feed) {
+        viewModelScope.launch {
+            val newValue = !feed.autoDownload
+            feedRepository.updateAutoDownload(feed.id, newValue)
+            refreshFeeds()
+        }
+    }
+
+    fun updateDownloadFolder(feedId: Long, folderUri: String) {
+        viewModelScope.launch {
+            feedRepository.updateDownloadFolder(feedId, folderUri)
+            refreshFeeds()
+        }
+    }
+
+    private suspend fun exportFeed(feed: Feed) {
+        try {
+            val folderUri = feed.downloadFolder?.takeIf { it.isNotBlank() } ?: return
+            val articles = articleRepository.getArticlesForFeedList(feed.id)
+            if (articles.isEmpty()) return
+            val uri = Uri.parse(folderUri)
+            val count = ArticleExporter.exportNewArticles(app, articles, uri, feed.lastExportedTime)
+            if (count > 0) {
+                feedRepository.updateLastExportedTime(feed.id, System.currentTimeMillis())
+                DebugLogger.log("ServerVM", "Exported $count articles for '${feed.title}'")
+            }
+        } catch (e: Exception) {
+            DebugLogger.log("ServerVM", "Export failed for '${feed.title}': ${e.message}")
         }
     }
 

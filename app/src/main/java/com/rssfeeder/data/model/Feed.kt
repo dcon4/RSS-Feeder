@@ -7,7 +7,10 @@ data class Feed(
     val type: FeedType,
     val lastRefreshTime: Long = 0,
     val unreadCount: Int = 0,
-    val errorMessage: String? = null
+    val errorMessage: String? = null,
+    val autoDownload: Boolean = false,
+    val downloadFolder: String? = null,
+    val lastExportedTime: Long = 0
 )
 
 enum class FeedType {

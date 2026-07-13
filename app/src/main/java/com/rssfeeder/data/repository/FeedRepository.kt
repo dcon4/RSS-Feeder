@@ -27,11 +27,19 @@ class FeedRepository(
         return feedDao.getFeedById(id)?.toDomain()
     }
 
-    suspend fun addFeed(title: String, url: String, type: FeedType): Long {
+    suspend fun addFeed(
+        title: String,
+        url: String,
+        type: FeedType,
+        autoDownload: Boolean = false,
+        downloadFolder: String? = null
+    ): Long {
         val entity = FeedEntity(
             title = title,
             url = url,
-            type = type.name
+            type = type.name,
+            autoDownload = autoDownload,
+            downloadFolder = downloadFolder
         )
         val id = feedDao.insertFeed(entity)
         DebugLogger.log("FeedRepository", "Added feed: $title ($type)")
@@ -52,6 +60,34 @@ class FeedRepository(
         feedDao.updateError(id, error)
     }
 
+    suspend fun updateAutoDownload(id: Long, enabled: Boolean) {
+        feedDao.updateAutoDownload(id, enabled)
+    }
+
+    suspend fun updateDownloadFolder(id: Long, folder: String?) {
+        feedDao.updateDownloadFolder(id, folder)
+    }
+
+    suspend fun updateLastExportedTime(id: Long, time: Long) {
+        feedDao.updateLastExportedTime(id, time)
+    }
+
+    suspend fun updateFeed(feed: Feed) {
+        feedDao.updateFeed(
+            FeedEntity(
+                id = feed.id,
+                title = feed.title,
+                url = feed.url,
+                type = feed.type.name,
+                lastRefreshTime = feed.lastRefreshTime,
+                errorMessage = feed.errorMessage,
+                autoDownload = feed.autoDownload,
+                downloadFolder = feed.downloadFolder,
+                lastExportedTime = feed.lastExportedTime
+            )
+        )
+    }
+
     suspend fun markAllAsRead(feedId: Long) {
         articleDao.markAllAsRead(feedId)
     }
@@ -67,7 +103,10 @@ class FeedRepository(
             url = url,
             type = try { FeedType.valueOf(type) } catch (e: Exception) { FeedType.REMOTE },
             lastRefreshTime = lastRefreshTime,
-            errorMessage = errorMessage
+            errorMessage = errorMessage,
+            autoDownload = autoDownload,
+            downloadFolder = downloadFolder,
+            lastExportedTime = lastExportedTime
         )
     }
 }

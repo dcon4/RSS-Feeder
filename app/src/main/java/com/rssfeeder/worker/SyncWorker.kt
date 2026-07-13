@@ -4,13 +4,15 @@ import android.content.Context
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.rssfeeder.data.db.AppDatabase
-import kotlinx.coroutines.flow.first
+import com.rssfeeder.data.model.Feed
 import com.rssfeeder.data.model.FeedType
 import com.rssfeeder.data.repository.ArticleRepository
 import com.rssfeeder.data.repository.FeedRepository
 import com.rssfeeder.debug.DebugLogger
+import com.rssfeeder.feed.ArticleExporter
 import com.rssfeeder.feed.FullTextExtractor
 import com.rssfeeder.feed.RssFetcher
+import kotlinx.coroutines.flow.first
 
 class SyncWorker(
     appContext: Context,
@@ -60,6 +62,10 @@ class SyncWorker(
                     feedRepository.updateError(feed.id, null)
                     successCount++
                     DebugLogger.log("SyncWorker", "Synced '${feed.title}': $newCount new articles")
+
+                    if (feed.autoDownload) {
+                        exportFeedArticles(applicationContext, feed, feedRepository, articleRepository)
+                    }
                 } catch (e: Exception) {
                     feedRepository.updateError(feed.id, e.message ?: "Unknown error")
                     failCount++
@@ -72,6 +78,29 @@ class SyncWorker(
         } catch (e: Exception) {
             DebugLogger.log("SyncWorker", "Sync failed: ${e.message ?: "Unknown error"}")
             Result.retry()
+        }
+    }
+
+    private suspend fun exportFeedArticles(
+        context: Context,
+        feed: Feed,
+        feedRepository: FeedRepository,
+        articleRepository: ArticleRepository
+    ) {
+        try {
+            val folderUri = feed.downloadFolder?.takeIf { it.isNotBlank() }
+                ?: return
+            val articles = articleRepository.getArticlesForFeedList(feed.id)
+            if (articles.isEmpty()) return
+
+            val uri = android.net.Uri.parse(folderUri)
+            val count = ArticleExporter.exportNewArticles(context, articles, uri, feed.lastExportedTime)
+            if (count > 0) {
+                feedRepository.updateLastExportedTime(feed.id, System.currentTimeMillis())
+                DebugLogger.log("SyncWorker", "Exported $count articles for '${feed.title}'")
+            }
+        } catch (e: Exception) {
+            DebugLogger.log("SyncWorker", "Export failed for '${feed.title}': ${e.message}")
         }
     }
 }

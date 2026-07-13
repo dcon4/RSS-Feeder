@@ -18,6 +18,7 @@ import com.rssfeeder.debug.DebugLogger
 import com.rssfeeder.server.ServerService
 import com.rssfeeder.server.ServerViewModel
 import com.rssfeeder.ui.addfeed.AddFeedScreen
+import com.rssfeeder.ui.addfeed.FeedAddConfig
 import com.rssfeeder.ui.feedlist.FeedListViewModel
 import com.rssfeeder.ui.server.ServerScreen
 import com.rssfeeder.ui.settings.SettingsScreen
@@ -104,8 +105,13 @@ class MainActivity : ComponentActivity() {
 
             composable("add_feed") {
                 AddFeedScreen(
-                    onAddFeed = { url, title ->
-                        feedListViewModel.addFeedByUrl(url, title.takeIf { it.isNotEmpty() })
+                    onAddFeed = { config ->
+                        feedListViewModel.addFeedByUrl(
+                            config.url,
+                            config.title.takeIf { it.isNotEmpty() },
+                            config.autoDownload,
+                            config.downloadFolder
+                        )
                         navController.popBackStack()
                         serverViewModel.refreshFeeds()
                     },

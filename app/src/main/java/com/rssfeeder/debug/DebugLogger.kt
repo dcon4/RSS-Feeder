@@ -124,4 +124,19 @@ object DebugLogger {
             prefs[PUSH_INTERVAL_KEY] = minutes
         }
     }
+
+    private val DEFAULT_DOWNLOAD_FOLDER_KEY = stringPreferencesKey("default_download_folder")
+
+    fun getDefaultDownloadFolderFlow(): Flow<String> {
+        val ctx = context ?: return emptyFlow()
+        return ctx.dataStore.data.map { prefs ->
+            prefs[DEFAULT_DOWNLOAD_FOLDER_KEY] ?: ""
+        }
+    }
+
+    suspend fun persistDefaultDownloadFolder(context: Context, uri: String) {
+        context.dataStore.edit { prefs ->
+            prefs[DEFAULT_DOWNLOAD_FOLDER_KEY] = uri
+        }
+    }
 }

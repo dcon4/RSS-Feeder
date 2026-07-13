@@ -37,4 +37,13 @@ interface FeedDao {
 
     @Query("UPDATE feeds SET error_message = :error WHERE id = :id")
     suspend fun updateError(id: Long, error: String?)
+
+    @Query("UPDATE feeds SET auto_download = :enabled WHERE id = :id")
+    suspend fun updateAutoDownload(id: Long, enabled: Boolean)
+
+    @Query("UPDATE feeds SET download_folder = :folder WHERE id = :id")
+    suspend fun updateDownloadFolder(id: Long, folder: String?)
+
+    @Query("UPDATE feeds SET last_exported_time = :time WHERE id = :id")
+    suspend fun updateLastExportedTime(id: Long, time: Long)
 }

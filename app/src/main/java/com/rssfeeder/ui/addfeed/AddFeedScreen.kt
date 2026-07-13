@@ -1,5 +1,9 @@
 package com.rssfeeder.ui.addfeed
 
+import android.content.Intent
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -25,6 +29,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -33,20 +38,43 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.rssfeeder.ui.components.RssFeederTopBar
+
+data class FeedAddConfig(
+    val url: String,
+    val title: String,
+    val autoDownload: Boolean = false,
+    val downloadFolder: String? = null
+)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddFeedScreen(
-    onAddFeed: (url: String, title: String) -> Unit,
+    onAddFeed: (FeedAddConfig) -> Unit,
     onAddLocalFolder: () -> Unit,
     onBackClick: () -> Unit,
     onShareLog: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
     var urlText by remember { mutableStateOf("") }
     var feedTitle by remember { mutableStateOf("") }
+    var autoDownload by remember { mutableStateOf(false) }
+    var downloadFolderUri by remember { mutableStateOf<String?>(null) }
+
+    val folderPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocumentTree()
+    ) { uri: Uri? ->
+        uri?.let {
+            context.contentResolver.takePersistableUriPermission(
+                it,
+                Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+            )
+            downloadFolderUri = it.toString()
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -108,13 +136,70 @@ fun AddFeedScreen(
                         singleLine = true
                     )
                     Spacer(modifier = Modifier.height(12.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Auto-download articles",
+                                style = MaterialTheme.typography.titleSmall
+                            )
+                            Text(
+                                text = "Save articles to device folder after sync",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(16.dp))
+                        Switch(
+                            checked = autoDownload,
+                            onCheckedChange = { autoDownload = it }
+                        )
+                    }
+
+                    if (autoDownload) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        OutlinedButton(
+                            onClick = { folderPickerLauncher.launch(null) },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.FolderOpen,
+                                contentDescription = null
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                if (downloadFolderUri != null) "Folder selected"
+                                else "Choose download folder"
+                            )
+                        }
+                        if (downloadFolderUri != null) {
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = downloadFolderUri!!.substringAfterLast('/'),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
                     Button(
                         onClick = {
                             if (urlText.isNotBlank()) {
-                                onAddFeed(urlText.trim(), feedTitle.trim())
+                                onAddFeed(
+                                    FeedAddConfig(
+                                        url = urlText.trim(),
+                                        title = feedTitle.trim(),
+                                        autoDownload = autoDownload,
+                                        downloadFolder = downloadFolderUri
+                                    )
+                                )
                             }
                         },
-                        enabled = urlText.isNotBlank(),
+                        enabled = urlText.isNotBlank() && (!autoDownload || downloadFolderUri != null),
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Text("Add feed")

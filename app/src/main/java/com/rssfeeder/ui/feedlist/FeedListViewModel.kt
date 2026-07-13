@@ -69,7 +69,12 @@ class FeedListViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
-    fun addFeedByUrl(url: String, customTitle: String? = null) {
+    fun addFeedByUrl(
+        url: String,
+        customTitle: String? = null,
+        autoDownload: Boolean = false,
+        downloadFolder: String? = null
+    ) {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
             try {
@@ -85,7 +90,7 @@ class FeedListViewModel(application: Application) : AndroidViewModel(application
                 }
 
                 val title = customTitle?.takeIf { it.isNotBlank() } ?: result.title
-                val feedId = feedRepository.addFeed(title, url, FeedType.REMOTE)
+                val feedId = feedRepository.addFeed(title, url, FeedType.REMOTE, autoDownload, downloadFolder)
 
                 val fullArticles = withContext(Dispatchers.IO) {
                     result.articles.map { article ->
