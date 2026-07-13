@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Fixed Relay Test</title>
+    <link>https://dcon4.github.io/RSS-Feeder/feeds/test-fix</link>
+    <description>Testing the relay repo fix</description>
+    <atom:link rel="self" href="https://dcon4.github.io/RSS-Feeder/feeds/test-fix-relay.xml" type="application/rss+xml"/>
+    <item>
+      <title>The relay now pushes to RSS-Feeder repo</title>
+      <link>https://dcon4.github.io/RSS-Feeder/feeds/test-fix-item</link>
+      <guid isPermaLink="false">test-fix-001</guid>
+      <pubDate>Sun, 12 Jul 2026 19:00:00 -0500</pubDate>
+      <description>This feed uses the old working format dcon4.github.io/RSS-Feeder/feeds/</description>
+    </item>
+  </channel>
+</rss>
