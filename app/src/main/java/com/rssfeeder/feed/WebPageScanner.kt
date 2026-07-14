@@ -17,10 +17,14 @@ class WebPageScanner {
     private val fullTextExtractor = FullTextExtractor()
 
     private val excludeLinkText = setOf(
-        "comments", "discuss", "reply", "permalink", "share", "tweet",
-        "facebook", "twitter", "reddit", "hn",
+        "comments", "discuss", "reply", "permalink",
         "next", "previous", "prev", "first", "last", "newer", "older",
         "page", "pages", "home", "more", "read more", "continue reading"
+    )
+
+    private val excludeLinkPrefixes = listOf(
+        "share on", "share via", "share to", "share this",
+        "pin it", "tweet", "email this", "print this"
     )
 
     fun scanPage(pageUrl: String): List<ScannedLink> {
@@ -43,6 +47,8 @@ class WebPageScanner {
             if (cleanHref in seenUrls) continue
             if (cleanHref == pageUrl || cleanHref == pageUrl.trimEnd('/')) continue
 
+            if (cleanHref.contains("?share=") || cleanHref.contains("&share=")) continue
+
             val linkDomain = try { URL(cleanHref).host } catch (e: Exception) { continue }
             val path = try { URL(cleanHref).path } catch (e: Exception) { continue }
             val linkText = a.text().trim()
@@ -51,11 +57,13 @@ class WebPageScanner {
             if (lower.length < 10) continue
             if (lower in excludeLinkText) continue
             if (excludeLinkText.any { lower == it || lower.startsWith("$it ") || lower.endsWith(" $it") }) continue
+            if (excludeLinkPrefixes.any { lower.startsWith(it) }) continue
 
             val isCrossDomain = linkDomain != pageDomain
             val score = scoreLink(linkText, path, isCrossDomain)
 
-            if (score >= 2) {
+            val minScore = if (linkText.length < 30) 3 else 2
+            if (score >= minScore) {
                 seenUrls.add(cleanHref)
                 links.add(ScannedLink(url = cleanHref, title = linkText, score = score))
             }
