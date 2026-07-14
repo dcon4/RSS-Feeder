@@ -12,6 +12,7 @@ import com.rssfeeder.debug.DebugLogger
 import com.rssfeeder.feed.ArticleExporter
 import com.rssfeeder.feed.FullTextExtractor
 import com.rssfeeder.feed.RssFetcher
+import com.rssfeeder.feed.WebPageScanner
 import kotlinx.coroutines.flow.first
 
 class SyncWorker(
@@ -35,33 +36,56 @@ class SyncWorker(
 
             for (feed in feedList) {
                 try {
-                    if (feed.type != FeedType.REMOTE) continue
-
-                    val articles = rssFetcher.fetchFeed(feed.url).articles
-                    var newCount = 0
-
-                    for (article in articles) {
-                        val existing = articleRepository.getArticleByLink(article.link)
-                        if (existing == null) {
-                            val fullContent = try {
-                                fullTextExtractor.extractFullText(article.link)
-                            } catch (e: Exception) {
-                                null
+                    when (feed.type) {
+                        FeedType.REMOTE -> {
+                            val articles = rssFetcher.fetchFeed(feed.url).articles
+                            var newCount = 0
+                            for (article in articles) {
+                                val existing = articleRepository.getArticleByLink(article.link)
+                                if (existing == null) {
+                                    val fullContent = try {
+                                        fullTextExtractor.extractFullText(article.link)
+                                    } catch (e: Exception) { null }
+                                    articleRepository.insertArticle(
+                                        article.copy(
+                                            feedId = feed.id,
+                                            content = fullContent ?: article.summary
+                                        )
+                                    )
+                                    newCount++
+                                }
                             }
-                            articleRepository.insertArticle(
-                                article.copy(
-                                    feedId = feed.id,
-                                    content = fullContent ?: article.summary
-                                )
-                            )
-                            newCount++
+                            feedRepository.updateRefreshTime(feed.id, System.currentTimeMillis())
+                            feedRepository.updateError(feed.id, null)
+                            successCount++
+                            DebugLogger.log("SyncWorker", "Synced '${feed.title}': $newCount new articles")
                         }
-                    }
+                        FeedType.WEB_PAGE -> {
+                            val now = System.currentTimeMillis()
+                            val elapsed = now - feed.lastPolledAt
+                            if (elapsed < feed.pollingIntervalMinutes * 60_000L) continue
 
-                    feedRepository.updateRefreshTime(feed.id, System.currentTimeMillis())
-                    feedRepository.updateError(feed.id, null)
-                    successCount++
-                    DebugLogger.log("SyncWorker", "Synced '${feed.title}': $newCount new articles")
+                            val scanner = WebPageScanner()
+                            val links = scanner.scanPage(feed.url)
+                            var newCount = 0
+                            for (link in links) {
+                                val existing = articleRepository.getArticleByLink(link.url)
+                                if (existing == null) {
+                                    val article = scanner.extractArticle(link.url, feed.id, link.title)
+                                    if (article != null) {
+                                        articleRepository.insertArticle(article)
+                                        newCount++
+                                    }
+                                }
+                            }
+                            feedRepository.updateLastPolledAt(feed.id, now)
+                            feedRepository.updateRefreshTime(feed.id, now)
+                            feedRepository.updateError(feed.id, null)
+                            successCount++
+                            DebugLogger.log("SyncWorker", "Polled web page '${feed.title}': $newCount new articles")
+                        }
+                        FeedType.LOCAL_FOLDER -> continue
+                    }
 
                     if (feed.autoDownload) {
                         exportFeedArticles(applicationContext, feed, feedRepository, articleRepository)

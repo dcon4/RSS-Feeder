@@ -46,4 +46,13 @@ interface FeedDao {
 
     @Query("UPDATE feeds SET last_exported_time = :time WHERE id = :id")
     suspend fun updateLastExportedTime(id: Long, time: Long)
+
+    @Query("SELECT * FROM feeds WHERE type = :type")
+    suspend fun getFeedsByType(type: String): List<FeedEntity>
+
+    @Query("UPDATE feeds SET polling_interval_minutes = :minutes WHERE id = :id")
+    suspend fun updatePollingInterval(id: Long, minutes: Int)
+
+    @Query("UPDATE feeds SET last_polled_at = :time WHERE id = :id")
+    suspend fun updateLastPolledAt(id: Long, time: Long)
 }

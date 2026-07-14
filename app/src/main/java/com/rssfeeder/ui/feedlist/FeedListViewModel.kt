@@ -14,6 +14,7 @@ import com.rssfeeder.feed.FeedFetchResult
 import com.rssfeeder.feed.FullTextExtractor
 import com.rssfeeder.feed.LocalFeedScanner
 import com.rssfeeder.feed.RssFetcher
+import com.rssfeeder.feed.WebPageScanner
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -117,6 +118,59 @@ class FeedListViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
+    fun addWebPageFeed(
+        url: String,
+        customTitle: String? = null,
+        pollingIntervalMinutes: Int = 360,
+        autoDownload: Boolean = false,
+        downloadFolder: String? = null
+    ) {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isLoading = true, error = null)
+            try {
+                val scanner = WebPageScanner()
+                val title = customTitle?.takeIf { it.isNotBlank() }
+                    ?: withContext(Dispatchers.IO) { scanner.detectPageTitle(url) }
+                    ?: try { java.net.URL(url).host?.removePrefix("www.") ?: url }
+                    catch (_: Exception) { url }
+
+                val feedId = feedRepository.addFeed(
+                    title = title,
+                    url = url,
+                    type = FeedType.WEB_PAGE,
+                    autoDownload = autoDownload,
+                    downloadFolder = downloadFolder,
+                    pollingIntervalMinutes = pollingIntervalMinutes
+                )
+
+                val links = withContext(Dispatchers.IO) {
+                    scanner.scanPage(url)
+                }
+                var articleCount = 0
+                for (link in links) {
+                    val article = withContext(Dispatchers.IO) {
+                        scanner.extractArticle(link.url, feedId, link.title)
+                    }
+                    if (article != null) {
+                        articleRepository.insertArticle(article)
+                        articleCount++
+                    }
+                }
+
+                feedRepository.updateLastPolledAt(feedId, System.currentTimeMillis())
+                feedRepository.updateRefreshTime(feedId, System.currentTimeMillis())
+                _uiState.value = _uiState.value.copy(isLoading = false)
+                DebugLogger.log("FeedListVM", "Added web page feed '$title': $articleCount articles")
+            } catch (e: Exception) {
+                DebugLogger.log("FeedListVM", "Failed to add web page feed: ${e.message ?: "Unknown error"}")
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    error = "Failed to add web page: ${e.message ?: "Unknown error"}"
+                )
+            }
+        }
+    }
+
     fun addLocalFolderFeed(title: String, folderUri: Uri) {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
@@ -169,6 +223,7 @@ class FeedListViewModel(application: Application) : AndroidViewModel(application
                 when (feed.type) {
                     FeedType.REMOTE -> refreshRemoteFeed(feed)
                     FeedType.LOCAL_FOLDER -> refreshLocalFeed(feed)
+                    FeedType.WEB_PAGE -> refreshWebPageFeed(feed)
                 }
             } catch (e: Exception) {
                 feedRepository.updateError(feedId, e.message)
@@ -215,6 +270,30 @@ class FeedListViewModel(application: Application) : AndroidViewModel(application
         }
         feedRepository.updateRefreshTime(feed.id, System.currentTimeMillis())
         feedRepository.updateError(feed.id, null)
+    }
+
+    private suspend fun refreshWebPageFeed(feed: Feed) {
+        val scanner = WebPageScanner()
+        val links = withContext(Dispatchers.IO) {
+            scanner.scanPage(feed.url)
+        }
+        var newCount = 0
+        for (link in links) {
+            val existing = articleRepository.getArticleByLink(link.url)
+            if (existing == null) {
+                val article = withContext(Dispatchers.IO) {
+                    scanner.extractArticle(link.url, feed.id, link.title)
+                }
+                if (article != null) {
+                    articleRepository.insertArticle(article)
+                    newCount++
+                }
+            }
+        }
+        feedRepository.updateLastPolledAt(feed.id, System.currentTimeMillis())
+        feedRepository.updateRefreshTime(feed.id, System.currentTimeMillis())
+        feedRepository.updateError(feed.id, null)
+        DebugLogger.log("FeedListVM", "Refreshed web page '${feed.title}': $newCount new articles")
     }
 
     fun clearError() {

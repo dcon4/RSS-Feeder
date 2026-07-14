@@ -13,6 +13,7 @@ import com.rssfeeder.debug.DebugLogger
 import com.rssfeeder.feed.ArticleExporter
 import com.rssfeeder.feed.FullTextExtractor
 import com.rssfeeder.feed.RssFetcher
+import com.rssfeeder.feed.WebPageScanner
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -167,31 +168,59 @@ class ServerViewModel(application: Application) : AndroidViewModel(application) 
         viewModelScope.launch {
             val feed = feedRepository.getFeedById(feedId) ?: return@launch
             try {
-                if (feed.type == FeedType.REMOTE) {
-                    val rssFetcher = RssFetcher()
-                    val fullTextExtractor = FullTextExtractor()
-                    val result = withContext(Dispatchers.IO) {
-                        rssFetcher.fetchFeed(feed.url)
-                    }
-                    var newCount = 0
-                    for (article in result.articles) {
-                        val existing = articleRepository.getArticleByLink(article.link)
-                        if (existing == null) {
-                            val fullContent = try {
-                                fullTextExtractor.extractFullText(article.link)
-                            } catch (e: Exception) { null }
-                            articleRepository.insertArticle(
-                                article.copy(
-                                    feedId = feed.id,
-                                    content = fullContent ?: article.summary
-                                )
-                            )
-                            newCount++
+                when (feed.type) {
+                    FeedType.REMOTE -> {
+                        val rssFetcher = RssFetcher()
+                        val fullTextExtractor = FullTextExtractor()
+                        val result = withContext(Dispatchers.IO) {
+                            rssFetcher.fetchFeed(feed.url)
                         }
+                        var newCount = 0
+                        for (article in result.articles) {
+                            val existing = articleRepository.getArticleByLink(article.link)
+                            if (existing == null) {
+                                val fullContent = try {
+                                    fullTextExtractor.extractFullText(article.link)
+                                } catch (e: Exception) { null }
+                                articleRepository.insertArticle(
+                                    article.copy(
+                                        feedId = feed.id,
+                                        content = fullContent ?: article.summary
+                                    )
+                                )
+                                newCount++
+                            }
+                        }
+                        feedRepository.updateRefreshTime(feed.id, System.currentTimeMillis())
+                        feedRepository.updateError(feed.id, null)
+                        DebugLogger.log("ServerVM", "Refreshed '${feed.title}': $newCount new articles")
                     }
-                    feedRepository.updateRefreshTime(feed.id, System.currentTimeMillis())
-                    feedRepository.updateError(feed.id, null)
-                    DebugLogger.log("ServerVM", "Refreshed '${feed.title}': $newCount new articles")
+                    FeedType.WEB_PAGE -> {
+                        val scanner = WebPageScanner()
+                        val links = withContext(Dispatchers.IO) {
+                            scanner.scanPage(feed.url)
+                        }
+                        var newCount = 0
+                        for (link in links) {
+                            val existing = articleRepository.getArticleByLink(link.url)
+                            if (existing == null) {
+                                val article = withContext(Dispatchers.IO) {
+                                    scanner.extractArticle(link.url, feed.id, link.title)
+                                }
+                                if (article != null) {
+                                    articleRepository.insertArticle(article)
+                                    newCount++
+                                }
+                            }
+                        }
+                        feedRepository.updateLastPolledAt(feed.id, System.currentTimeMillis())
+                        feedRepository.updateRefreshTime(feed.id, System.currentTimeMillis())
+                        feedRepository.updateError(feed.id, null)
+                        DebugLogger.log("ServerVM", "Refreshed web page '${feed.title}': $newCount new articles")
+                    }
+                    FeedType.LOCAL_FOLDER -> {
+                        // handled separately if needed
+                    }
                 }
                 if (feed.autoDownload) {
                     exportFeed(feed)
@@ -208,6 +237,13 @@ class ServerViewModel(application: Application) : AndroidViewModel(application) 
         viewModelScope.launch {
             val newValue = !feed.autoDownload
             feedRepository.updateAutoDownload(feed.id, newValue)
+            refreshFeeds()
+        }
+    }
+
+    fun updatePollingInterval(feedId: Long, minutes: Int) {
+        viewModelScope.launch {
+            feedRepository.updatePollingInterval(feedId, minutes)
             refreshFeeds()
         }
     }

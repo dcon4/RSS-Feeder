@@ -14,5 +14,8 @@ data class FeedEntity(
     @ColumnInfo(name = "error_message") val errorMessage: String? = null,
     @ColumnInfo(name = "auto_download") val autoDownload: Boolean = false,
     @ColumnInfo(name = "download_folder") val downloadFolder: String? = null,
-    @ColumnInfo(name = "last_exported_time") val lastExportedTime: Long = 0
+    @ColumnInfo(name = "last_exported_time") val lastExportedTime: Long = 0,
+    @ColumnInfo(name = "polling_interval_minutes") val pollingIntervalMinutes: Int = 360,
+    @ColumnInfo(name = "last_polled_at") val lastPolledAt: Long = 0,
+    @ColumnInfo(name = "link_selector") val linkSelector: String? = null
 )

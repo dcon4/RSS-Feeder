@@ -19,6 +19,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CloudUpload
 import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -44,6 +45,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import com.rssfeeder.data.model.FeedType
 import com.rssfeeder.server.FeedWithUrl
 import com.rssfeeder.server.ServerService
 import com.rssfeeder.server.ServerViewModel
@@ -150,7 +152,8 @@ fun ServerScreen(
                     onCopyRelay = {
                         copyToClipboard(context, feedWithUrl.relayUrl)
                     },
-                    onDelete = { viewModel.deleteFeed(feedWithUrl.feed) }
+                    onDelete = { viewModel.deleteFeed(feedWithUrl.feed) },
+                    onPollNow = { viewModel.refreshFeed(feedWithUrl.feed.id) }
                 )
             }
         }
@@ -327,6 +330,7 @@ private fun FeedRssCard(
     onCopyNetworkHttps: () -> Unit = {},
     onCopyRelay: () -> Unit = {},
     onDelete: () -> Unit = {},
+    onPollNow: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     var showDeleteConfirm by remember { mutableStateOf(false) }
@@ -423,6 +427,58 @@ private fun FeedRssCard(
                 )
             }
             Spacer(modifier = Modifier.height(8.dp))
+
+            if (feedWithUrl.feed.type == FeedType.WEB_PAGE) {
+                val minutes = feedWithUrl.feed.pollingIntervalMinutes
+                val freqLabel = when {
+                    minutes < 60 -> "Every $minutes minutes"
+                    minutes < 1440 -> "Every ${minutes / 60} hours"
+                    else -> "Every ${minutes / 1440} day"
+                }
+                val lastPolled = if (feedWithUrl.feed.lastPolledAt > 0) {
+                    val elapsed = (System.currentTimeMillis() - feedWithUrl.feed.lastPolledAt) / 1000
+                    when {
+                        elapsed < 60 -> "Just now"
+                        elapsed < 3600 -> "${elapsed / 60} min ago"
+                        else -> "${elapsed / 3600} hours ago"
+                    }
+                } else "Never"
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Web page feed",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Text(
+                            text = "Poll: $freqLabel, Last: $lastPolled",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        val error = feedWithUrl.feed.errorMessage
+                        if (error != null) {
+                            Text(
+                                text = "Error: $error",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.error
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    IconButton(onClick = onPollNow) {
+                        Icon(
+                            imageVector = Icons.Default.Refresh,
+                            contentDescription = "Poll now"
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+
             Button(
                 onClick = { showDeleteConfirm = true },
                 modifier = Modifier.fillMaxWidth()

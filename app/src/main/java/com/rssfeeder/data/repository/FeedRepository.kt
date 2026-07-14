@@ -32,14 +32,18 @@ class FeedRepository(
         url: String,
         type: FeedType,
         autoDownload: Boolean = false,
-        downloadFolder: String? = null
+        downloadFolder: String? = null,
+        pollingIntervalMinutes: Int = 360,
+        linkSelector: String? = null
     ): Long {
         val entity = FeedEntity(
             title = title,
             url = url,
             type = type.name,
             autoDownload = autoDownload,
-            downloadFolder = downloadFolder
+            downloadFolder = downloadFolder,
+            pollingIntervalMinutes = pollingIntervalMinutes,
+            linkSelector = linkSelector
         )
         val id = feedDao.insertFeed(entity)
         DebugLogger.log("FeedRepository", "Added feed: $title ($type)")
@@ -72,6 +76,18 @@ class FeedRepository(
         feedDao.updateLastExportedTime(id, time)
     }
 
+    suspend fun getFeedsByType(type: FeedType): List<Feed> {
+        return feedDao.getFeedsByType(type.name).map { it.toDomain() }
+    }
+
+    suspend fun updatePollingInterval(id: Long, minutes: Int) {
+        feedDao.updatePollingInterval(id, minutes)
+    }
+
+    suspend fun updateLastPolledAt(id: Long, time: Long) {
+        feedDao.updateLastPolledAt(id, time)
+    }
+
     suspend fun updateFeed(feed: Feed) {
         feedDao.updateFeed(
             FeedEntity(
@@ -83,7 +99,10 @@ class FeedRepository(
                 errorMessage = feed.errorMessage,
                 autoDownload = feed.autoDownload,
                 downloadFolder = feed.downloadFolder,
-                lastExportedTime = feed.lastExportedTime
+                lastExportedTime = feed.lastExportedTime,
+                pollingIntervalMinutes = feed.pollingIntervalMinutes,
+                lastPolledAt = feed.lastPolledAt,
+                linkSelector = feed.linkSelector
             )
         )
     }
@@ -106,7 +125,10 @@ class FeedRepository(
             errorMessage = errorMessage,
             autoDownload = autoDownload,
             downloadFolder = downloadFolder,
-            lastExportedTime = lastExportedTime
+            lastExportedTime = lastExportedTime,
+            pollingIntervalMinutes = pollingIntervalMinutes,
+            lastPolledAt = lastPolledAt,
+            linkSelector = linkSelector
         )
     }
 }

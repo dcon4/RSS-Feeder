@@ -10,10 +10,14 @@ data class Feed(
     val errorMessage: String? = null,
     val autoDownload: Boolean = false,
     val downloadFolder: String? = null,
-    val lastExportedTime: Long = 0
+    val lastExportedTime: Long = 0,
+    val pollingIntervalMinutes: Int = 360,
+    val lastPolledAt: Long = 0,
+    val linkSelector: String? = null
 )
 
 enum class FeedType {
     REMOTE,
-    LOCAL_FOLDER
+    LOCAL_FOLDER,
+    WEB_PAGE
 }

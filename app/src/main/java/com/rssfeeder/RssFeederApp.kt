@@ -6,6 +6,7 @@ import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import com.rssfeeder.debug.DebugLogger
 import com.rssfeeder.worker.SyncWorker
+import com.rssfeeder.worker.WebPagePollWorker
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -29,6 +30,7 @@ class RssFeederApp : Application() {
         }
 
         schedulePeriodicSync()
+        scheduleWebPagePoll()
     }
 
     private fun schedulePeriodicSync() {
@@ -40,6 +42,18 @@ class RssFeederApp : Application() {
             "rss_feed_sync",
             ExistingPeriodicWorkPolicy.KEEP,
             syncRequest
+        )
+    }
+
+    private fun scheduleWebPagePoll() {
+        val pollRequest = PeriodicWorkRequestBuilder<WebPagePollWorker>(
+            15, TimeUnit.MINUTES
+        ).build()
+
+        WorkManager.getInstance(this).enqueueUniquePeriodicWork(
+            "web_page_poll",
+            ExistingPeriodicWorkPolicy.KEEP,
+            pollRequest
         )
     }
 }

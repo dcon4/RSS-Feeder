@@ -106,12 +106,22 @@ class MainActivity : ComponentActivity() {
             composable("add_feed") {
                 AddFeedScreen(
                     onAddFeed = { config ->
-                        feedListViewModel.addFeedByUrl(
-                            config.url,
-                            config.title.takeIf { it.isNotEmpty() },
-                            config.autoDownload,
-                            config.downloadFolder
-                        )
+                        if (config.pollingIntervalMinutes != null) {
+                            feedListViewModel.addWebPageFeed(
+                                url = config.url,
+                                customTitle = config.title.takeIf { it.isNotEmpty() },
+                                pollingIntervalMinutes = config.pollingIntervalMinutes,
+                                autoDownload = config.autoDownload,
+                                downloadFolder = config.downloadFolder
+                            )
+                        } else {
+                            feedListViewModel.addFeedByUrl(
+                                config.url,
+                                config.title.takeIf { it.isNotEmpty() },
+                                config.autoDownload,
+                                config.downloadFolder
+                            )
+                        }
                         navController.popBackStack()
                         serverViewModel.refreshFeeds()
                     },
