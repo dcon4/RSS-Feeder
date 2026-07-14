@@ -65,7 +65,7 @@ class WebPageScanner {
                 pageTitle
             } else {
                 doc?.title()?.takeIf { it.isNotBlank() }
-                    ?: try { URL(linkUrl).path.substringAfterLast('/').substringBefore('.').replace('-', ' ').replace('_', ' ') }
+                    ?: try { URL(linkUrl).path.substringAfterLast('/').substringBefore('.').replace('-', ' ').replace('_', ' ') } catch (e: Exception) { null }
                     ?: "Untitled"
             }
 
