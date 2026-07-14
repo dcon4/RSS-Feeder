@@ -16,13 +16,22 @@ class WebPageScanner {
 
     private val fullTextExtractor = FullTextExtractor()
 
+    private val excludeLinkText = setOf(
+        "comments", "discuss", "reply", "permalink", "share", "tweet",
+        "facebook", "twitter", "reddit", "hn",
+        "next", "previous", "prev", "first", "last", "newer", "older",
+        "page", "pages", "home", "more", "read more", "continue reading"
+    )
+
     fun scanPage(pageUrl: String): List<ScannedLink> {
         DebugLogger.log("WebPageScanner", "Scanning page: $pageUrl")
         val doc = fetchDocument(pageUrl) ?: return emptyList()
 
         doc.select("nav, footer, .nav, .footer, .sidebar, .menu, .comments, script, style").remove()
+        doc.select("a[href*=login], a[href*=register], a[href*=signup], a[href*=logout]").remove()
+        doc.select("a[href^=javascript], a[href^=#]").remove()
 
-        val domain = try { URL(pageUrl).host } catch (e: Exception) { return emptyList() }
+        val pageDomain = try { URL(pageUrl).host } catch (e: Exception) { return emptyList() }
         val seenUrls = mutableSetOf<String>()
         val links = mutableListOf<ScannedLink>()
 
@@ -30,20 +39,21 @@ class WebPageScanner {
             val href = a.attr("abs:href")
             if (href.isBlank()) continue
 
-            try {
-                val linkDomain = URL(href).host
-                if (linkDomain != domain) continue
-            } catch (e: Exception) { continue }
-
             val cleanHref = href.substringBefore('#')
             if (cleanHref in seenUrls) continue
             if (cleanHref == pageUrl || cleanHref == pageUrl.trimEnd('/')) continue
 
+            val linkDomain = try { URL(cleanHref).host } catch (e: Exception) { continue }
             val path = try { URL(cleanHref).path } catch (e: Exception) { continue }
             val linkText = a.text().trim()
-            if (linkText.length < 10) continue
 
-            val score = scoreLink(linkText, path)
+            val lower = linkText.lowercase()
+            if (lower.length < 10) continue
+            if (lower in excludeLinkText) continue
+            if (excludeLinkText.any { lower == it || lower.startsWith("$it ") || lower.endsWith(" $it") }) continue
+
+            val isCrossDomain = linkDomain != pageDomain
+            val score = scoreLink(linkText, path, isCrossDomain)
 
             if (score >= 2) {
                 seenUrls.add(cleanHref)
@@ -101,12 +111,12 @@ class WebPageScanner {
         }
     }
 
-    private fun scoreLink(linkText: String, path: String): Int {
+    private fun scoreLink(linkText: String, path: String, isCrossDomain: Boolean): Int {
         var score = 0
 
-        if (linkText.length >= 40) score += 3
-        else if (linkText.length >= 25) score += 2
-        else if (linkText.length >= 15) score += 1
+        if (linkText.length >= 50) score += 3
+        else if (linkText.length >= 35) score += 2
+        else if (linkText.length >= 20) score += 1
 
         if (path.contains("/article") || path.contains("/articles")) score += 3
         if (path.contains("/news") || path.contains("/newswire")) score += 2
@@ -116,6 +126,8 @@ class WebPageScanner {
 
         if (Regex("""/\d{4}/\d{2}/\d{2}/""").containsMatchIn(path)) score += 3
         if (Regex("""/\d{4}/\d{2}/""").containsMatchIn(path)) score += 2
+
+        if (isCrossDomain) score += 2
 
         return score
     }
