@@ -19,12 +19,22 @@ class WebPageScanner {
     private val excludeLinkText = setOf(
         "comments", "discuss", "reply", "permalink",
         "next", "previous", "prev", "first", "last", "newer", "older",
-        "page", "pages", "home", "more", "read more", "continue reading"
+        "pages", "home", "more", "read more", "continue reading",
+        "leave a comment", "leave a reply", "add comment", "rss feed",
+        "subscribe", "follow"
     )
 
     private val excludeLinkPrefixes = listOf(
         "share on", "share via", "share to", "share this",
-        "pin it", "tweet", "email this", "print this"
+        "pin it", "tweet", "email this", "print",
+        "leave a", "add a", "rss", "subscribe", "follow"
+    )
+
+    private val shareDomains = setOf(
+        "facebook.com", "twitter.com", "x.com", "reddit.com",
+        "pinterest.com", "linkedin.com", "tumblr.com",
+        "instagram.com", "youtube.com", "youtu.be",
+        "bsky.social", "threads.net", "telegram.org"
     )
 
     fun scanPage(pageUrl: String): List<ScannedLink> {
@@ -48,10 +58,28 @@ class WebPageScanner {
             if (cleanHref == pageUrl || cleanHref == pageUrl.trimEnd('/')) continue
 
             if (cleanHref.contains("?share=") || cleanHref.contains("&share=")) continue
+            if (cleanHref.contains("?print=") || cleanHref.contains("&print=")) continue
+            if (cleanHref.contains("?replytocom=") || cleanHref.contains("&replytocom=")) continue
+            if (cleanHref.contains("?like=") || cleanHref.contains("&like=") ||
+                cleanHref.contains("&vote=")) continue
 
             val linkDomain = try { URL(cleanHref).host } catch (e: Exception) { continue }
             val path = try { URL(cleanHref).path } catch (e: Exception) { continue }
             val linkText = a.text().trim()
+
+            var isShareDomain = false
+            for (domain in shareDomains) {
+                if (linkDomain == domain || linkDomain.endsWith(".$domain")) {
+                    isShareDomain = true
+                    break
+                }
+            }
+            if (isShareDomain) continue
+
+            if (path.startsWith("/category/") || path.startsWith("/tag/") ||
+                path.startsWith("/author/")) continue
+            if (path.startsWith("/page/") || path == "/page") continue
+            if (path.contains("/feed/") || path.endsWith("/rss") || path.endsWith("/atom")) continue
 
             val lower = linkText.lowercase()
             if (lower.length < 10) continue
@@ -69,9 +97,16 @@ class WebPageScanner {
             }
         }
 
-        val sorted = links.sortedByDescending { it.score }.take(20)
-        DebugLogger.log("WebPageScanner", "Found ${sorted.size} article links from $pageUrl")
-        return sorted
+        val deduped = links
+            .groupBy { try { URL(it.url).path } catch (e: Exception) { it.url } }
+            .mapValues { (_, group) -> group.maxBy { l -> l.score } }
+            .values
+            .sortedByDescending { it.score }
+            .take(20)
+        DebugLogger.log("WebPageScanner", "Found ${deduped.size} article links from $pageUrl (${
+            if (deduped.size < links.size) "${links.size - deduped.size} duplicates removed" else "no duplicates"
+        })")
+        return deduped
     }
 
     fun extractArticle(linkUrl: String, feedId: Long, pageTitle: String?): Article? {
