@@ -11,7 +11,23 @@
     <language>en</language>
     <ttl>60</ttl>
     <generator>RSS-Feeder Android</generator>
-    <lastBuildDate>Thu, 30 Jul 2026 14:49:17 -0500</lastBuildDate>
+    <lastBuildDate>Thu, 30 Jul 2026 15:19:17 -0500</lastBuildDate>
+    <item>
+      <title>How can I detect AI on Substack?</title>
+      <link>https://support.substack.com/hc/en-us/articles/50891130623508-How-can-I-detect-AI-on-Substack</link>
+      <guid isPermaLink="false">feed-2-https://support.substack.com/hc/en-us/articles/50891130623508-How-can-I-detect-AI-on-Substack</guid>
+      <pubDate>Thu, 30 Jul 2026 14:27:09 -0500</pubDate>
+      <description><![CDATA[Scan for AI text estimates whether text was written by a human or AI-assisted. It works on posts and notes published on or after July 21, 2026, and uses Pangram…]]></description>
+      <content:encoded><![CDATA[Scan for AI text estimates whether text was written by a human or AI-assisted. It works on posts and notes published on or after July 21, 2026, and uses Pangram to assign a percentage of how much of the text is human-written or AI-assisted. Note: Neither Substack nor Pangram uses publisher content to train generative AI models. Substack offers a Block AI training toggle in Settings that signals to external AI crawlers not to use your content for training models. The Scan for AI text tool can be used in the following surfaces and content: The Substack Reader (Web): Click on a post from your Subscriptions to open the reader. Substack iOS App (Android coming soon): Check for AI on notes and posts on the app. Notes: Scan notes on your feed without leaving Home. Comments & Replies: Scan individual comments and replies on notes. Note: The AI transparency tool is unavailable for video or audio posts, or for posts viewed on standalone Substack sites (such as on.substack.com or custom domains) or emails. How do I scan a post for AI text on the web? Open a post from Subscriptions on the web. This opens the Substack Reader. Click the three dots in the top right corner. Select Scan for AI text. How do I scan a note for AI text? Click the three dots on the note. Select Scan for AI text. Notes with too little text will show a "not enough text" message instead of an analysis. How do I scan for AI on the Substack app? Tap on any note or post and select the three dots in the upper right corner. Tap Scan for AI text. How can creators manage AI detection on their content? Add a transparency note Go to your publication's Settings page and scroll to the Details section. Click “Edit” next to "How I make this." Enter your statement which will appear if readers scan one of your posts, notes, or replies for AI text. Select “Save statement”. Tip: You can always edit your “How I make this” statement by clicking on the three dots on a Pangram analysis of your post or note. Analyze and disable detection on a post On the Publish page of a draft post, click Disable AI detection. When you disable AI detection on a draft post, readers who view the post on the Substack Reader will see an "AI detection unavailable" message when using the Scan for AI text tool. Note: If you’re writing an article on the Substack app, tap “Next” once you’re finished with the draft. On the Publish page, click the three dots and select “Scan for AI text”. On the analysis report, tap the three dots and select "Disable detection. Disable detection on a note 1. Click the three dots in the notes composer. 2. Select Scan for AI text. 3. Once the Pangram analysis appears, click the three dots in the upper right corner. 4. Select Disable detection. Once detection is disabled, readers will no longer see a Pangram analysis on that post or note. Instead, they’ll see an “AI detection unavailable” message. Tip: You can disable detection on the web and on the Substack app by clicking on the three dots on a Pangram analysis. Report a detection error On the AI detection report, select Report detection error. Enter your feedback which will reviewed to improve detection quality.]]></content:encoded>
+    </item>
+    <item>
+      <title>https://share.google/IOITIFdjUpV5aOXE6</title>
+      <link>https://share.google/IOITIFdjUpV5aOXE6</link>
+      <guid isPermaLink="false">feed-2-https://share.google/IOITIFdjUpV5aOXE6</guid>
+      <pubDate>Thu, 30 Jul 2026 14:27:08 -0500</pubDate>
+      <description><![CDATA[]]></description>
+      <content:encoded><![CDATA[]]></content:encoded>
+    </item>
     <item>
       <title>https://share.google/hCELoAoEfyx83V0Cy</title>
       <link>https://share.google/hCELoAoEfyx83V0Cy</link>
